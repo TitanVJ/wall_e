@@ -96,7 +96,7 @@ class Mod(commands.Cog):
         """Ensures all channels have the muted role as part of its permissions."""
         ## Avoid the admin category of channels and rules and announcments channel since nobody can talk in there anyway
 
-        logger.info('[Mod propigatemute()] embed function detected by user ' + str(ctx.message.author))
+        logger.info('[Mod propigatemute()] propigatemute function detected by user ' + str(ctx.message.author))
         await ctx.message.delete()
         logger.info('[Mod propigatemute()] invoking message deleted')
 
@@ -123,7 +123,7 @@ class Mod(commands.Cog):
         #  however admin channels are rare to be made
 
         # get guild
-
+        channels = ctx.guild.channels
         # set up the perms overwrite
         overwrite = discord.PermissionOverwrite()
         overwrite.send_messages = False
@@ -134,9 +134,8 @@ class Mod(commands.Cog):
         overwrite.manage_roles = False
 
         # loop through channels and change the perms
-
-        # set up the perms overwrite
-
-        # loop through channels and change the perms
+        for channel in channels:
+            if channel.id not in adminChannels:
+                channel.set_permissions(MUTED_ID, overwrite)
 
     #TODO: slowmode, createchannel, lock commands
