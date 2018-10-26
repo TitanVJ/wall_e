@@ -105,7 +105,7 @@ class Mod(commands.Cog):
             await self.rekt(ctx)
             return
 
-        MUTED_ID = 338575090847580160
+        MUTED_ROLE = ctx.guild.get_role(338575090847580160)
         adminChannels = [
                         228766474972430336, # execs
                         303276909054132242, # council
@@ -136,6 +136,6 @@ class Mod(commands.Cog):
         # loop through channels and change the perms
         for channel in channels:
             if channel.id not in adminChannels:
-                channel.set_permissions(MUTED_ID, overwrite)
+                channel.set_permissions(MUTED_ROLE, overwrite)
 
     #TODO: slowmode, createchannel, lock commands
