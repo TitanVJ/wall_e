@@ -107,7 +107,7 @@ class Mod(commands.Cog):
 
         roles = ctx.guild.roles
         for role in roles:
-            if role.id == 338575090847580160:
+            if role.id == 338575090847580160: # convert to envVar
                 MUTED_ROLE = role
                 break
 
