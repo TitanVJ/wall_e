@@ -180,8 +180,7 @@ class Mod(commands.Cog):
         # Get the MUTED role
         roles = ctx.guild.roles
         for role in roles:
-            # if role.id == 338575090847580160: # convert to envVar
-            if role.id == 505409200302718996:
+            if role.id == 338575090847580160:
                 MUTED_ROLE = role
                 break
 
@@ -201,7 +200,7 @@ class Mod(commands.Cog):
         logger.info('[Mod makechannel()] channel permissions created')
 
         # Check if making secret channel then append those perms
-        if secret: 
+        if secret:
             setattr(overwrite[ctx.guild.default_role], 'read_messages', False)
             setattr(overwrite[ctx.guild.default_role], 'manage_messages', False)
             setattr(overwrite[ctx.guild.default_role], 'mention_everyone', True)
