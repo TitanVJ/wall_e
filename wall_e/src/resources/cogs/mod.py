@@ -205,6 +205,7 @@ class Mod(commands.Cog):
             setattr(overwrite[ctx.guild.default_role], 'read_messages', False)
             setattr(overwrite[ctx.guild.default_role], 'manage_messages', False)
             setattr(overwrite[ctx.guild.default_role], 'mention_everyone', True)
+            logger.info('[Mod makechannel()] making a hidden channel')
 
         # Create channel
         ch = await ctx.guild.create_text_channel(name, overwrites=overwrite)
@@ -213,6 +214,6 @@ class Mod(commands.Cog):
         # Send message to council about channel made
         council = discord.utils.get(ctx.guild.channels, name="council")
         eObj = em(description=str(ctx.author) + ' made channel: `' + name + '`', footer='Moderator action')
-        council.send(embed=eObj)
+        await council.send(embed=eObj)
 
 #TODO: createchannel, lock commands, dm warn/other kind of dm'd info etc, mass msg delete, mute
