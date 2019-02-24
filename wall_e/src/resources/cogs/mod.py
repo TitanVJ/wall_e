@@ -307,12 +307,12 @@ class Mod(commands.Cog):
     @commands.command()
     async def mute(self, ctx):
         # Adds mute role to someone
-        
+
         # Verify Minion
         logger.info('[Mod mute()] mute function detected by user' + str(ctx.message.author))
         await ctx.message.delete()
         logger.info('[Mod mute()] invoking command deleted')
-        
+
         if not ctx.message.author in discord.utils.get(ctx.guild.roles, name="Minions").members:
             logger.info('[Mod mute()] unathorized command attempt detected. Being handled.')
             await self.rekt(ctx)
@@ -320,24 +320,34 @@ class Mod(commands.Cog):
 
         # Check for mention
         # If there get user
+        logger.info('[Mod mute()] checking for mention')
         mentions = ctx.message.mentions
         if len(mentions) != 1:
+            logger.info('[Mod mute()] no mention found. Informing user')
             await ctx.send('You need to @ mention the user to mute', delete_after=5.0)
         else:
             user = mentions[0]
+        logger.info('[Mod mute()] user found through mention: {}'.format(user))
 
         # Grab the Muted role
         MUTED_ROLE = discord.utils.get(ctx.guild.roles, name='Muted')
+        logger.info('[Mod mute()] mute role found: {}'.format(MUTED_ROLE))
 
         # Add muted role to user
         await user.add_roles(MUTED_ROLE)
+        logger.info('[Mod mute()] adding muted role to user')
 
         # Tell them in dm
+        logger.info('[Mod mute()] informing {} that they are muted in dm'.format(user))
         await user.send('You\'ve been muted. message a minion to learn why and how to be unmuted')
         #TODO add something ^ to react to msg council for reconsideration slash reach out to u
 
         # Tell council of action
+        logger.info('[Mod mute()] getting council channel')
         council = discord.utils.get(ctx.guild.channels, name='council')
+        logger.info('[Mod mute()] council channel found: {}'.format(council))
+
+        logger.info('[Mod mute()] informing council of {}\'s action to mute {}'.format(ctx.message.author, user))
         await council.send('{} muted {}'.format(ctx.message.author, user))
 
 #TODO: lock commands, dm warn/other kind of dm'd info etc, mute
