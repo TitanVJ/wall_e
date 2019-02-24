@@ -257,7 +257,6 @@ class Mod(commands.Cog):
         # Deletes 10 message in channel from user
         # Order of arguments doesn't matter, the code works around it
         args = list(args)
-        print(args)
 
         # Verify Minion
         logger.info('[Mod purge()] purge function detected by user' + str(ctx.message.author))
