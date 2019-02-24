@@ -331,7 +331,7 @@ class Mod(commands.Cog):
 
         # Grab the Muted role
         MUTED_ROLE = discord.utils.get(ctx.guild.roles, name='Muted')
-        logger.info('[Mod mute()] mute role found: {}'.format(MUTED_ROLE))
+        logger.info('[Mod mute()] mute role found: {}'.format(MUTED_ROLE.id))
 
         # Add muted role to user
         await user.add_roles(MUTED_ROLE)
@@ -345,7 +345,7 @@ class Mod(commands.Cog):
         # Tell council of action
         logger.info('[Mod mute()] getting council channel')
         council = discord.utils.get(ctx.guild.channels, name='council')
-        logger.info('[Mod mute()] council channel found: {}'.format(council))
+        logger.info('[Mod mute()] council channel found: {}'.format(council.id))
 
         logger.info('[Mod mute()] informing council of {}\'s action to mute {}'.format(ctx.message.author, user))
         await council.send('{} muted {}'.format(ctx.message.author, user))
