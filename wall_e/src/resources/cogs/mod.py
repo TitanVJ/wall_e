@@ -431,9 +431,9 @@ class Mod(commands.Cog):
     @commands.command()
     async def unlock(self, ctx):
         # Unlocks a channel if its locked
-        # Verify channel is locked 
+        # Verify channel is locked
         ## How? => check @everyone for send_messages
-        
+
         logger.info('[Mod unlock()] unlock function detected by user' + str(ctx.message.author))
         await ctx.message.delete()
         logger.info('[Mod unlock()] invoking command deleted')
@@ -447,13 +447,13 @@ class Mod(commands.Cog):
         perms = channel.overwrites
         ow = list(perms[0]) # assumes @everyone is always the fifrst thign in teh perms tuple
 
-        if ow[1].send_messages == True or ow[1].send_messages == None: 
+        if ow[1].send_messages == True or ow[1].send_messages == None:
             # Not locked
             await ctx.send('You can\'t unlock what isn\'t locked.\n-Richard Stallman\'s Fart', delete_after=3.0)
             return
 
-        # If here then the channel is locked and we can proceed 
-        
+        # If here then the channel is locked and we can proceed
+
         # Get the Minions role
         MINIONS_ROLE = discord.utils.get(ctx.guild.roles, name='Minions')
         logger.info('[Mod unlock()] minion role found: {}'.format(MINIONS_ROLE.id))
@@ -465,7 +465,7 @@ class Mod(commands.Cog):
 
         # Tell the channel
         logger.info('[Mod unlock()] unlock message sent to {}'.format(channel))
-        eObj = em(description='This channel is now unlocked, feel free to blah blah bl...', author=ctx.author.display_name, avatar=ctx.author.avatar_url, footer='Moderator action') 
+        eObj = em(description='This channel is now unlocked, feel free to blah blah bl...', author=ctx.author.display_name, avatar=ctx.author.avatar_url, footer='Moderator action')
         await ctx.send(embed=eObj)
 
         # Tell council
@@ -474,7 +474,7 @@ class Mod(commands.Cog):
         eObj = em(description='{} unlock {}'.format(ctx.message.author, channel.mention), footer='Moderator action')
         await ctx.send(embed=eObj)
 
-            
+
 
 
 
