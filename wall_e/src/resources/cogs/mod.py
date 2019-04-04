@@ -126,7 +126,7 @@ class Mod(commands.Cog):
 
         eObj = await em(ctx, description='Muted permissions spread though all channels like herpies. Enjoy :)', footer='Moderator action')
         if eObj is not False:
-			await ctx.send(embed=eObj, delete_after=3.0)
+            await ctx.send(embed=eObj, delete_after=3.0)
 
     @commands.command()
     async def slowmode(self, ctx, time = 10):
@@ -158,7 +158,8 @@ class Mod(commands.Cog):
         # Verify args
         if not name:
             eObj = await em(ctx, description='Missing arguments', footer='Error in makechannel command')
-            ctx.send(embed=eObj)
+            if eObj is not False:
+                await ctx.send(embed=eObj)
             return
 
         # Get the MUTED role
@@ -193,7 +194,8 @@ class Mod(commands.Cog):
         # Send message to council about channel made
         council = discord.utils.get(ctx.guild.channels, name="council")
         eObj = await em(ctx, description=str(ctx.author) + ' made channel: `' + name + '`', footer='Moderator action')
-        await council.send(embed=eObj)
+        if eObj is not False:
+            await council.send(embed=eObj)
 
     @commands.command()
     async def clear(self, ctx, numOfMsgs = 10.0):
@@ -216,7 +218,7 @@ class Mod(commands.Cog):
             # Prevents discord.ClientException
             eObj = await em(ctx, description='Number of messages to be between 1 and 100 inclusively', footer='Invalid arguments')
             if eObj is not False:
-				await ctx.send(embed=eObj)
+                await ctx.send(embed=eObj)
 
         channel = ctx.channel
         # Grab the last X messages from the channel regardless of user
@@ -230,12 +232,12 @@ class Mod(commands.Cog):
         except discord.HTTPException:
             eObj = await em(ctx, description='Messages cannot be older than 2 weeks', footer='Command Error')
             if eObj is not False:
-				await ctx.send(embed=eObj, delete_after=10.0)
+                await ctx.send(embed=eObj, delete_after=10.0)
             return
 
         eObj = await em(ctx, description='{} messages deleted'.format(numOfMsgs), footer='Message will self destruct in 5 ...')
         if eObj is not False:
-			await ctx.send(embed=eObj, delete_after=5.0)
+            await ctx.send(embed=eObj, delete_after=5.0)
 
     @commands.command()
     async def purge(self, ctx, *args):
@@ -260,7 +262,7 @@ class Mod(commands.Cog):
             # There is no mentoin or more than 1
             eObj = await em(ctx, description='Need to @ mention the user to purge messages from', footer='Invalid arguments')
             if eObj is not False:
-				await ctx.send(embed=eObj)
+                await ctx.send(embed=eObj)
             return
         elif len(mentions) == 1:
             # Remove the mention from args and init the num var
@@ -289,7 +291,7 @@ class Mod(commands.Cog):
 
         eObj = await em(ctx, description='Purged {} messages from {}'.format(len(deleted), user), footer='This messages will self destruct in 5...')
         if eObj is not False:
-			await ctx.send(embed=eObj, delete_after=5.0)
+            await ctx.send(embed=eObj, delete_after=5.0)
 
     @commands.command()
     async def mute(self, ctx):
@@ -313,7 +315,7 @@ class Mod(commands.Cog):
             logger.info('[Mod mute()] no mention found. Informing user')
             eObj = await em(ctx, description='You need to @ mention the user to mute', footer='Invalid arguments')
             if eObj is not False:
-				await ctx.send(embed=eObj, delete_after=5.0)
+                await ctx.send(embed=eObj, delete_after=5.0)
             return
         else:
             user = mentions[0]
@@ -330,7 +332,8 @@ class Mod(commands.Cog):
         # Tell them in dm
         logger.info('[Mod mute()] informing {} that they are muted in dm'.format(user))
         eObj = await em(ctx, title='Moderator action was taken against you', colour=0xff0000, description='You\'ve been muted in the CSSS server. Message a minion to learn why and how to be unmuted', footer='Moderator action')
-        await user.send(embed=eObj)
+        if eObj is not False:
+            await user.send(embed=eObj)
 
         # Tell council of action
         logger.info('[Mod mute()] getting council channel')
@@ -339,7 +342,8 @@ class Mod(commands.Cog):
 
         logger.info('[Mod mute()] informing council of {}\'s action to mute {}'.format(ctx.message.author, user))
         eObj = await em(ctx, description='{} muted {}'.format(ctx.message.author, user))
-        await council.send(embed=eObj)
+        if eObj is not False:
+            await council.send(embed=eObj)
 
     @commands.command()
     async def unmute(self, ctx):
@@ -352,7 +356,7 @@ class Mod(commands.Cog):
             logger.info('[Mod unmute()] no mention found. Informing user')
             eObj = await em(ctx, description='You need to @ mention the user to mute', footer='Invalid arguments')
             if eObj is not False:
-				await ctx.send(embed=eObj, delete_after=5.0)
+                await ctx.send(embed=eObj, delete_after=5.0)
             return
         else:
             user = mentions[0]
@@ -368,7 +372,7 @@ class Mod(commands.Cog):
             logger.info('[Mod unmute()] {} is not muted. Informing {} of this fact'.format(user, ctx.message.author))
             eObj = await em(ctx, description='{} is not muted so cannot unmute'.format(user), footer='Invalid arguments')
             if eObj is not False:
-				await ctx.send(embed=eObj)
+                await ctx.send(embed=eObj)
             return
         logger.info('[Mod unmute()] {} verified to be muted'.format(user))
 
@@ -379,12 +383,15 @@ class Mod(commands.Cog):
         # Tell user of their new freedom and to not abuse it
         logger.info('[Mod unmute()] letting {} know they\'ve been unmuted and to not do something stupid again')
         eObj = await em(ctx, description='You\'ve been unmuted. Don\'t do whatever you did to get muted in the first place again, or else next time you might be kicked or banned.', footer='Moderator action')
-        await user.send(embed=eObj)
+        if eObj is not False:
+            await user.send(embed=eObj)
 
         # Inform council of actions
         logger.info('[Mod unmute()] telling council of the unmuting')
         council = discord.utils.get(ctx.guild.channels, name='council')
-        await council.send('{} unmuted {}'.format(ctx.message.author, user))
+        eObj = em(ctx, description='{} unmuted {}'.format(ctx.message.author, user), footer='Moderator action')
+        if eObj is not False:
+            await council.send(embed=eObj)
 
     @commands.command()
     async def lock(self, ctx):
@@ -418,13 +425,14 @@ class Mod(commands.Cog):
         logger.info('[Mod lock()] lock message sent to {}'.format(channel))
         eObj = await em(ctx, description='This channel has been locked until further notice.', author=ctx.author.display_name, avatar=ctx.author.avatar_url, footer='Moderator action')
         if eObj is not False:
-			await ctx.send(embed=eObj)
+            await ctx.send(embed=eObj)
 
         # Inform council of the locked channel
         logger.info('[Mod lock()] council informed of locked channel')
         council = discord.utils.get(ctx.guild.channels, name='council')
         eObj = await em(ctx, description='{} locked {}'.format(ctx.message.author, channel.mention), footer='Moderator action')
-        await council.send(embed=eObj)
+        if eObj is not False:
+            await council.send(embed=eObj)
 
     @commands.command()
     async def unlock(self, ctx):
@@ -449,7 +457,7 @@ class Mod(commands.Cog):
             # Not locked
             eObj = await em(ctx, description='You can\'t unlock what isn\'t locked.\n-Richard Stallman\'s Fart', footer='Command error')
             if eObj is not False:
-				await ctx.send(embed=eObj, delete_after=3.0)
+                await ctx.send(embed=eObj, delete_after=3.0)
             return
 
         # If here then the channel is locked and we can proceed
@@ -467,13 +475,14 @@ class Mod(commands.Cog):
         logger.info('[Mod unlock()] unlock message sent to {}'.format(channel))
         eObj = await em(ctx, description='This channel is now unlocked, feel free to blah blah bl...', author=ctx.author.display_name, avatar=ctx.author.avatar_url, footer='Moderator action')
         if eObj is not False:
-			await ctx.send(embed=eObj)
+            await ctx.send(embed=eObj)
 
         # Tell council
         logger.info('[Mod unlock()] council informed of unlocked channel')
         council = discord.utils.get(ctx.guild.channels, name='council')
         eObj = await em(ctx, description='{} unlocked {}'.format(ctx.message.author, channel.mention), footer='Moderator action')
-        await council.send(embed=eObj)
+        if eObj is not False:
+            await council.send(embed=eObj)
 
 
 
