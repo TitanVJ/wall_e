@@ -125,7 +125,8 @@ class Mod(commands.Cog):
                 await channel.set_permissions(MUTED_ROLE, overwrite=overwrite)
 
         eObj = await em(ctx, description='Muted permissions spread though all channels like herpies. Enjoy :)', footer='Moderator action')
-        await ctx.send(embed=eObj, delete_after=3.0)
+        if eObj is not False:
+			await ctx.send(embed=eObj, delete_after=3.0)
 
     @commands.command()
     async def slowmode(self, ctx, time = 10):
@@ -212,7 +213,8 @@ class Mod(commands.Cog):
         if numOfMsgs > 100 or numOfMsgs < 1:
             # Prevents discord.ClientException
             eObj = await em(ctx, description='Number of messages to be between 1 and 100 inclusively', footer='Invalid arguments')
-            await ctx.send(embed=eObj)
+            if eObj is not False:
+				await ctx.send(embed=eObj)
 
         channel = ctx.channel
         # Grab the last X messages from the channel regardless of user
@@ -225,11 +227,13 @@ class Mod(commands.Cog):
             logger.info('[Mod clear()] messages from {} deleted'.format(channel))
         except discord.HTTPException:
             eObj = await em(ctx, description='Messages cannot be older than 2 weeks', footer='Command Error')
-            await ctx.send(embed=eObj, delete_after=10.0)
+            if eObj is not False:
+				await ctx.send(embed=eObj, delete_after=10.0)
             return
 
         eObj = await em(ctx, description='{} messages deleted'.format(numOfMsgs), footer='Message will self destruct in 5 ...')
-        await ctx.send(embed=eObj, delete_after=5.0)
+        if eObj is not False:
+			await ctx.send(embed=eObj, delete_after=5.0)
 
     @commands.command()
     async def purge(self, ctx, *args):
@@ -253,7 +257,8 @@ class Mod(commands.Cog):
         if len(mentions) != 1:
             # There is no mentoin or more than 1
             eObj = await em(ctx, description='Need to @ mention the user to purge messages from', footer='Invalid arguments')
-            await ctx.send(embed=eObj)
+            if eObj is not False:
+				await ctx.send(embed=eObj)
             return
         elif len(mentions) == 1:
             # Remove the mention from args and init the num var
@@ -281,7 +286,8 @@ class Mod(commands.Cog):
         logger.info('[Mod purge()] purged messages: {}'.format(deleted))
 
         eObj = await em(ctx, description='Purged {} messages from {}'.format(len(deleted), user), footer='This messages will self destruct in 5...')
-        await ctx.send(embed=eObj, delete_after=5.0)
+        if eObj is not False:
+			await ctx.send(embed=eObj, delete_after=5.0)
 
     @commands.command()
     async def mute(self, ctx):
@@ -304,7 +310,8 @@ class Mod(commands.Cog):
         if len(mentions) != 1:
             logger.info('[Mod mute()] no mention found. Informing user')
             eObj = await em(ctx, description='You need to @ mention the user to mute', footer='Invalid arguments')
-            await ctx.send(embed=eObj, delete_after=5.0)
+            if eObj is not False:
+				await ctx.send(embed=eObj, delete_after=5.0)
             return
         else:
             user = mentions[0]
@@ -342,7 +349,8 @@ class Mod(commands.Cog):
         if len(mentions) != 1:
             logger.info('[Mod unmute()] no mention found. Informing user')
             eObj = await em(ctx, description='You need to @ mention the user to mute', footer='Invalid arguments')
-            await ctx.send(embed=eObj, delete_after=5.0)
+            if eObj is not False:
+				await ctx.send(embed=eObj, delete_after=5.0)
             return
         else:
             user = mentions[0]
@@ -357,7 +365,8 @@ class Mod(commands.Cog):
         if user not in MUTED_ROLE.members:
             logger.info('[Mod unmute()] {} is not muted. Informing {} of this fact'.format(user, ctx.message.author))
             eObj = await em(ctx, description='{} is not muted so cannot unmute'.format(user), footer='Invalid arguments')
-            await ctx.send(embed=eObj)
+            if eObj is not False:
+				await ctx.send(embed=eObj)
             return
         logger.info('[Mod unmute()] {} verified to be muted'.format(user))
 
@@ -406,7 +415,8 @@ class Mod(commands.Cog):
         # Message channel to notify the status
         logger.info('[Mod lock()] lock message sent to {}'.format(channel))
         eObj = await em(ctx, description='This channel has been locked until further notice.', author=ctx.author.display_name, avatar=ctx.author.avatar_url, footer='Moderator action')
-        await ctx.send(embed=eObj)
+        if eObj is not False:
+			await ctx.send(embed=eObj)
 
         # Inform council of the locked channel
         logger.info('[Mod lock()] council informed of locked channel')
@@ -436,7 +446,8 @@ class Mod(commands.Cog):
         if ow[1].send_messages == True or ow[1].send_messages == None:
             # Not locked
             eObj = await em(ctx, description='You can\'t unlock what isn\'t locked.\n-Richard Stallman\'s Fart', footer='Command error')
-            await ctx.send(embed=eObj, delete_after=3.0)
+            if eObj is not False:
+				await ctx.send(embed=eObj, delete_after=3.0)
             return
 
         # If here then the channel is locked and we can proceed
@@ -453,7 +464,8 @@ class Mod(commands.Cog):
         # Tell the channel
         logger.info('[Mod unlock()] unlock message sent to {}'.format(channel))
         eObj = await em(ctx, description='This channel is now unlocked, feel free to blah blah bl...', author=ctx.author.display_name, avatar=ctx.author.avatar_url, footer='Moderator action')
-        await ctx.send(embed=eObj)
+        if eObj is not False:
+			await ctx.send(embed=eObj)
 
         # Tell council
         logger.info('[Mod unlock()] council informed of unlocked channel')
