@@ -304,7 +304,7 @@ class Mod(commands.Cog):
         numMsgs = 0
         def check(m):
             nonlocal numMsgs
-            if m.author == user:
+            if m.author == user and numMsgs < num:
                 numMsgs += 1
                 return True
             else:
