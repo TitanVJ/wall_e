@@ -451,7 +451,7 @@ class Mod(commands.Cog):
         # Inform council of actions
         logger.info('[Mod unmute()] telling council of the unmuting')
         council = discord.utils.get(ctx.guild.channels, name='council')
-        eObj = em(ctx, description='{} unmuted {}'.format(ctx.message.author, user), footer='Moderator action')
+        eObj = await em(ctx, description='{} unmuted {}'.format(ctx.message.author, user), footer='Moderator action')
         if eObj is not False:
             await council.send(embed=eObj)
 
