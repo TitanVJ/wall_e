@@ -105,6 +105,10 @@ class Mod(commands.Cog):
             await self.rekt(ctx)
             return
 
+        if 'manage_roles' not in await listOfRoles.getListOfUserPerms(ctx, ctx.bot.user.id):
+            logger.info('[Mod propagatemute()] the bot does not have the manage roles permissio, which it needs in order to execute this command.')
+            return
+
         MUTED_ROLE = discord.utils.get(ctx.guild.roles, name='Muted')
 
         # Check if muted role is there
@@ -364,6 +368,8 @@ class Mod(commands.Cog):
         # Grab the Muted role
         MUTED_ROLE = discord.utils.get(ctx.guild.roles, name='Muted')
 
+        bot_role = discord.utils.get(ctx.guild.roles, name='Wall-E')
+
         # Check if muted role is there
         if not MUTED_ROLE:
             eObj = await em(ctx, description='Muted role is missing', footer='Command error')
@@ -372,6 +378,10 @@ class Mod(commands.Cog):
             return
 
         logger.info('[Mod mute()] mute role found: {}'.format(MUTED_ROLE.id))
+
+        if bot_role < MUTED_ROLE:
+            logger.info('Mod mute()] it seems that the bot\'s role is not higher than the Muted role, so it can\'t add {} to the role'.format(mentions[0]))
+            return
 
         # Add muted role to user
         await user.add_roles(MUTED_ROLE)
@@ -428,6 +438,12 @@ class Mod(commands.Cog):
 
         logger.info('[Mod unmute()] muted role found: {}'.format(MUTED_ROLE.id))
 
+        bot_role = discord.utils.get(ctx.guild.roles, name='Wall-E')
+
+        if bot_role < MUTED_ROLE:
+            logger.info('Mod unmute()] it seems that the bot\'s role is not higher than the Muted role, so it can\'t remove {} from the role'.format(mentions[0]))
+            return
+
         # Verify user has the muted role
         logger.info('[Mod unmute()] verifying if {} is muted or not'.format(user))
         if user not in MUTED_ROLE.members:
@@ -478,6 +494,12 @@ class Mod(commands.Cog):
         MINIONS_ROLE = discord.utils.get(ctx.guild.roles, name='Minions')
         logger.info('[Mod lock()] minion role found: {}'.format(MINIONS_ROLE.id))
 
+        bot_role = discord.utils.get(ctx.guild.roles, name='Wall-E')
+
+        if bot_role < MUTED_ROLE:
+            logger.info('Mod lock()] it seems that the bot\'s role is not higher than the Muted role, so it won\'t be able to send any message in this chat if its locked')
+            return
+
         # Edit channel with new permissions
         logger.info('[Mod lock()] editing {} permissions'.format(channel))
         await channel.set_permissions(ctx.guild.default_role, send_messages=False)
@@ -526,6 +548,7 @@ class Mod(commands.Cog):
 
         # Get the Minions role
         MINIONS_ROLE = discord.utils.get(ctx.guild.roles, name='Minions')
+
         logger.info('[Mod unlock()] minion role found: {}'.format(MINIONS_ROLE.id))
 
         # Set the permissions
