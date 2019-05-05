@@ -3,7 +3,7 @@
 async def getListOfUserPerms(ctx, userID=False):
 
 	if userID is not False:
-		userPermToCheck=ctx.guild.get_member(id)
+		userPermToCheck=ctx.guild.get_member(userID)
 	else:
 		userPermToCheck = ctx.author
 	roles=[]
