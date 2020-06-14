@@ -5,6 +5,7 @@ import json
 from helper_files.embed import embed as em
 import helper_files.settings as settings
 from helper_files.settings import adminChannels 
+from helper_files import listOfRoles
 
 import logging
 logger = logging.getLogger('wall_e')
@@ -95,6 +96,10 @@ class Mod():
         if not ctx.message.author in discord.utils.get(ctx.guild.roles, name="Minions").members:
             logger.info('[Mod propagatemute()] unathorized command attempt detected. Being handled.')
             await self.rekt(ctx)
+            return
+
+        if 'manage_roles' not in await listOfRoles.getListOfUserPerms(ctx, ctx.bot.user.id):
+            logger.info('[Mod propagatemute()] the bot does not have the manage roles permissio, which it needs in order to execute this command.')
             return
 
         MUTED_ROLE = discord.utils.get(ctx.guild.roles, name='Muted')
@@ -356,6 +361,8 @@ class Mod():
         # Grab the Muted role
         MUTED_ROLE = discord.utils.get(ctx.guild.roles, name='Muted')
         
+        bot_role = discord.utils.get(ctx.guild.roles, name='Wall-E')
+        
         # Check if muted role is there
         if not MUTED_ROLE:
             eObj = await em(ctx, description='Muted role is missing', footer='Command error')
@@ -365,6 +372,10 @@ class Mod():
         
         logger.info('[Mod mute()] mute role found: {}'.format(MUTED_ROLE.id))
 
+        if bot_role < MUTED_ROLE:
+            logger.info('Mod mute()] it seems that the bot\'s role is not higher than the Muted role, so it can\'t add {} to the role'.format(mentions[0]))
+            return
+ 
         # Add muted role to user
         await user.add_roles(MUTED_ROLE)
         logger.info('[Mod mute()] adding muted role to user')
@@ -420,6 +431,12 @@ class Mod():
 
         logger.info('[Mod unmute()] muted role found: {}'.format(MUTED_ROLE.id))
 
+        bot_role = discord.utils.get(ctx.guild.roles, name='Wall-E')
+        
+        if bot_role < MUTED_ROLE:
+            logger.info('Mod unmute()] it seems that the bot\'s role is not higher than the Muted role, so it can\'t remove {} from the role'.format(mentions[0]))
+            return
+        
         # Verify user has the muted role
         logger.info('[Mod unmute()] verifying if {} is muted or not'.format(user))
         if user not in MUTED_ROLE.members:
@@ -470,6 +487,12 @@ class Mod():
         MINIONS_ROLE = discord.utils.get(ctx.guild.roles, name='Minions')
         logger.info('[Mod lock()] minion role found: {}'.format(MINIONS_ROLE.id))
 
+        bot_role = discord.utils.get(ctx.guild.roles, name='Wall-E')
+        
+        if bot_role < MUTED_ROLE:
+            logger.info('Mod lock()] it seems that the bot\'s role is not higher than the Muted role, so it won\'t be able to send any message in this chat if its locked')
+            return
+
         # Edit channel with new permissions
         logger.info('[Mod lock()] editing {} permissions'.format(channel))
         await channel.set_permissions(ctx.guild.default_role, send_messages=False)
@@ -518,6 +541,7 @@ class Mod():
         
         # Get the Minions role
         MINIONS_ROLE = discord.utils.get(ctx.guild.roles, name='Minions')
+
         logger.info('[Mod unlock()] minion role found: {}'.format(MINIONS_ROLE.id))
 
         # Set the permissions
