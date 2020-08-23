@@ -54,10 +54,11 @@ class ReactionRole(commands.Cog):
         title = user_input.content
 
         # get colour for embed or use default
-        await ctx.send('Enter a colour for the embed message.\
-            Enter `None` to skip this and use the default colour.\n\
-            **Need help picking a colour?** ```[HTML Colour Codes](https://htmlcolorcodes.com/)```\n\
-            **Hexcode Format**: **0x**<hex> OR **#**<hex>')
+        await ctx.send(
+            'Enter a colour for the embed message. Enter `none` to skip this and use the default colour.\n' +
+            '**Need help picking a colour?** Check out: <https://htmlcolorcodes.com/>\n' +
+            '**Hexcode Format**: \n\t**0x**<hex> OR **#**<hex>'
+            )
         user_input = await self.bot.wait_for('message', check=input_check)
         if user_input.content == 'exit':
             await ctx.send('react embed creation aborted')
@@ -69,11 +70,13 @@ class ReactionRole(commands.Cog):
                 await ctx.send('That doesn\'t seem to legit hex code, so we\'ll just go with a default colour.')
 
         # emoji, role, optional message
-        await ctx.send('Time to add roles. Just keep typing them out one at a time, when you\'re done type `done`\
-            \n Heres the format for adding roles.\
-            3rd argument is an optional next to the emoji instead of the role.\n\
-            `<emoji>, <role>, [<description of some sort>]`\n **Example**\n :smiling_imp:, Froshee\n :snake:,\
-            Tab-Life, React if ur python gang')
+        await ctx.send(
+            'Time to add roles. Just keep typing them out one at a time, when you\'re done type `done`.\n' +
+            'Heres the format for adding roles:\n' +
+            '```<emoji>, <role>, [<description of some sort>]```' +
+            'The 3rd argument is *optional*, it puts a message next to the emoji instead of the role.\n' +
+            '**Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang'
+            )
         while True:
             # await ctx.send('What do you want the react message to be?')
             user_input = await self.bot.wait_for('message', check=input_check)
