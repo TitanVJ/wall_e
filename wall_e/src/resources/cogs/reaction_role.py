@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 import logging
+from resources.utilities.embed import embed
 logger = logging.getLogger('wall_e')
 
 
@@ -10,7 +11,7 @@ class ReactionRole(commands.Cog):
         self.bot = bot
         self.config = config
 
-    def check(self, author: discord.user, channel:discord.channel):
+    def check(self, author: discord.user, channel: discord.channel):
         # makes use of closures
         # will be useful for continuous monitoring of reaction embeds
         def check(m):
@@ -18,59 +19,84 @@ class ReactionRole(commands.Cog):
 
         return check
 
-    @commands.command()
+    @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
         logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
-        ch = self.check(ctx.author, ctx.channel)
+        input_check = self.check(ctx.author, ctx.channel)
 
-        '''TODO:
-            - array of all prompts for inputs, then foreach them
-            - need some way to identify optional prompts
-            - special case for content fields
-        need:
+        '''Required:
             - channel to have react embed
-            - title w/ call to action prompt            
+            - title w/ call to action prompt
             - emoji, role, and what to list as in embed
-            - optional colour 
-            - role and channel can be both the mention or just name
+            - optional colour
+
+            - role and channel can be both the mention or just name <= handled by converters
         '''
+        channel = ''
+        title = ''
+        roles = []
+        colour = discord.Colour.blurple
 
-        # abort at anytime with keyword 'exit' alone
- 
-        # title = await self.bot.wait_for('message', check=ch)
-        # if(title == 'exit'):
-        #     await ctx.send('react embed creation aborted')
-        #     return
+        # get channel to send the react embed
+        await ctx.send('What channel do you want the message in?')
+        user_input = await self.bot.wait_for('message', check=input_check)
+        if user_input.content == 'exit':
+            await ctx.send('react embed creation aborted')
+            return
+        channel = await commands.TextChannelConverter().convert(ctx, user_input.content)
 
-        # description = await self.bot.wait_for('message', check=ch)
-        # if(description == 'exit'):
-        #     await ctx.send('react embed creation aborted')
-        #     return
+        # get embed title
+        await ctx.send('What do you want the react message to be?')
+        user_input = await self.bot.wait_for('message', check=input_check)
+        if user_input.content == 'exit':
+            await ctx.send('react embed creation aborted')
+            return
+        title = user_input.content
 
-        # # content => while
+        # get colour for embed or use default
+        await ctx.send('Enter a colour for the embed message.\
+            Enter `None` to skip this and use the default colour.\n\
+            **Need help picking a colour?** ```[HTML Colour Codes](https://htmlcolorcodes.com/)```\n\
+            **Hexcode Format**: **0x**<hex> OR **#**<hex>')
+        user_input = await self.bot.wait_for('message', check=input_check)
+        if user_input.content == 'exit':
+            await ctx.send('react embed creation aborted')
+            return
+        if user_input:
+            try:
+                colour = commands.ColourConverter().convert(ctx, user_input.content)
+            except Exception:
+                await ctx.send('That doesn\'t seem to legit hex code, so we\'ll just go with a default colour.')
 
-        # # colour
-        # colour = await self.bot.wait_for('message', check=ch)
-        # if(colour == 'exit'):
-        #     await ctx.send('react embed creation aborted')
-        #     return
+        # emoji, role, optional message
+        await ctx.send('Time to add roles. Just keep typing them out one at a time, when you\'re done type `done`\
+            \n Heres the format for adding roles.\
+            3rd argument is an optional next to the emoji instead of the role.\n\
+            `<emoji>, <role>, [<description of some sort>]`\n **Example**\n :smiling_imp:, Froshee\n :snake:,\
+            Tab-Life, React if ur python gang')
+        while True:
+            # await ctx.send('What do you want the react message to be?')
+            user_input = await self.bot.wait_for('message', check=input_check)
+            if user_input.content == 'exit':
+                await ctx.send('react embed creation aborted')
+                return
+            elif user_input.content == 'done':
+                break
+            roles.append(user_input.content)
+            # todo: parse input for emoji, role, and leftover message
 
-        # # thumbnail
-        # thumbnail = await self.bot.wait_for('message', check=ch)
-        # if(thumbnail == 'exit'):
-        #     await ctx.send('react embed creation aborted')
-        #     return
-
-        # # footer
-        # footer = await self.bot.wait_for('message', check=ch)
-        # if(footer == 'exit'):
-        #     await ctx.send('react embed creation aborted')
-        #     return
-
-        # m = await self.bot.wait_for('message', check=check(ctx.author, ctx.channel))
-        # print(m.content)
-        # await ctx.send(m.content)
-        # await ctx.send(m)
-
-        print(em)
-        await ctx.send('done')
+        # em = await embed(
+        #     ctx,
+        #     title=title,
+        #     author=ctx.author.display_name,
+        #     avatar=ctx.author.avatar_url,
+        #     content=roles,
+        #     colour=colour,
+        #     footer='*Yeeeeeet!!*'
+        # )
+        # react_embed = await channel.send(embed=em)
+        print(channel)
+        print(title)
+        print(colour)
+        print(roles)
+        await ctx.send('Done')
