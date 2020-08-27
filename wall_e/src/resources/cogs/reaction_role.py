@@ -34,6 +34,26 @@ class ReactionRole(commands.Cog):
                 return False, ret
         return True, ret
 
+    async def parse(self, ctx, msg: discord.Message):
+        # parse out the role, emoji, and optional message
+        print(msg.content)
+        info = list(map(lambda str: str.strip(), msg.content.split(',')))
+        print(str(info[0]))
+        # try:
+        #     info[0] = await commands.EmojiConverter().convert(ctx, info[0])
+        # except Exception as e:
+        #     print('emoji exception')
+        #     print(e)
+        #     await ctx.send(f'Could not find emoji: {info[0]}')
+        #     return None
+
+        try:
+            info[1] = await commands.RoleConverter().convert(ctx, info[1])
+        except Exception:
+            await ctx.send(f'Cound not find role: {info[1]}')
+            return None
+        return info
+
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
         logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
@@ -86,7 +106,7 @@ class ReactionRole(commands.Cog):
             # check if valid otherwise set to default
             if not status:
                 if colour == 'none':
-                    ctx.send('using default colour')
+                    await ctx.send('using default colour')
                 else:
                     e_obj = await embed(
                         ctx,
@@ -99,7 +119,7 @@ class ReactionRole(commands.Cog):
                     )
                     await ctx.send(embed=e_obj)
                 colour = 0x900C3F
-                logger.info('[ReactionRole reactrole()] react role colour set to default value: 0x{colour:x}')
+                logger.info(f'[ReactionRole reactrole()] react role colour set to default value: 0x{colour:x}')
             else:
                 logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
 
@@ -113,15 +133,25 @@ class ReactionRole(commands.Cog):
                 '**Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang'
                 )
             while True:
-                msg = await self.bot.wait_for('message', check=self.check(ctx.author, ctx.channel), timeout=60.0)
+                msg = await self.bot.wait_for('message', check=self.check(ctx.author, ctx.channel))#, timeout=60.0)
                 if msg.content == 'done':
                     await ctx.send('aight thanks dawg')
                     break
+
+                info = await self.parse(ctx, msg)
+                if info is not None:
+                    # add to roles
+                    roles.append(info)
+                    # add checkmark reaction to msg
+                else:
+                    # add red x reaction to msg
+                    pass
+                print(info)
                 # parse msg for emoji, role, and the optional message
                 # also emote to each message to indicate it's added.
-                roles.append(msg.content)
 
-        except Exception:
+        except Exception as e:
+            print(e)
             o_obj = await embed(
                 ctx,
                 title='Bad Argument',
