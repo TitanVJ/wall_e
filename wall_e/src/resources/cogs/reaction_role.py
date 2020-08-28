@@ -55,7 +55,43 @@ class ReactionRole(commands.Cog):
         except Exception:
             await ctx.send(f'Cound not find role: {info[1]}')
             return
+
+        if len(info) == 2:
+            info.append('')
         return info
+
+    async def send_react_message(self, ctx, channel: discord.TextChannel, title, colour, role_bindings):
+        def extract(binding):
+            for key in binding:
+                emojis.append(key)
+                role_msg = binding[key]
+                if role_msg['message'] == '':
+                    return f'{key} {role_msg["role"].mention}'
+                else:
+                    return f'{key} {role_msg["message"]}'
+        emojis = []
+
+        # make the embed
+        react_embed = embed(
+            ctx,
+            title=title,
+            author=ctx.author.display_name,
+            avatar=ctx.author.avatar_url,
+            colour=colour,
+            content=[
+                ('', '\n'.join(map(extract, role_bindings)))
+            ],
+            footer='Self Assignable Roles'
+        )
+        # send the react message to the destination channel
+        react_msg = await channel.send(embed=react_embed)
+
+        # add the reactions
+        for emoji in emojis:
+            await react_msg.add_reaction(emoji)
+
+        # send acknowledgement message to user with link to react embed
+        await ctx.send(f'Done\nHeres your reaction role message: {react_msg.jump_url}')
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
@@ -63,7 +99,7 @@ class ReactionRole(commands.Cog):
 
         channel = ''
         title = ''
-        roles = []
+        role_binding = {}
         colour = None
 
         try:
@@ -121,7 +157,7 @@ class ReactionRole(commands.Cog):
                         footer='ReactRole Error'
                     )
                     await ctx.send(embed=e_obj)
-                colour = 0x900C3F
+                colour = 0x12FFD8
                 logger.info(f'[ReactionRole reactrole()] react role colour set to default value: 0x{colour:x}')
             else:
                 logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
@@ -143,11 +179,17 @@ class ReactionRole(commands.Cog):
 
                 info = await self.parse(ctx, msg)
                 if info is not None:
-                    roles.append(info)
+                    print(type(info))
+                    print(type(info[0]))
+                    print(type(info[1]))
+                    print(type(info[2]))
+
+                    role_binding.update({info[0]: {'role': info[1], 'message': info[2]}})
+                    # TODO: WAS HERE MAKING FINAL ROLE BINDING DATA STRUCTURE
+
                     await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
                 else:
                     await msg.add_reaction('\N{CROSS MARK}')
-                print(info)
 
         except asyncio.TimeoutError:
             o_obj = await embed(
@@ -162,8 +204,10 @@ class ReactionRole(commands.Cog):
             await ctx.send(embed=o_obj)
             return
 
+        # make and send the reaction role
+        await self.send_react_message(ctx, channel, title, colour, role_binding)
+
         print(channel)
         print(title)
         print(colour)
-        print(roles)
-        await ctx.send('Done')
+        print(role_binding)
