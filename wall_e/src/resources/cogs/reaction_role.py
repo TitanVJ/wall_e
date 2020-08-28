@@ -1,6 +1,8 @@
 import discord
 from discord.ext import commands
 import logging
+import json
+import asyncio
 from resources.utilities.embed import embed
 logger = logging.getLogger('wall_e')
 
@@ -10,6 +12,9 @@ class ReactionRole(commands.Cog):
     def __init__(self, bot, config):
         self.bot = bot
         self.config = config
+        emoji_file = open('resources/locales/emoji-compact.json')
+        self.emojis = json.load(emoji_file)
+        emoji_file.close()
 
     def check(self, author: discord.user, channel: discord.channel):
         # makes use of closures
@@ -36,22 +41,20 @@ class ReactionRole(commands.Cog):
 
     async def parse(self, ctx, msg: discord.Message):
         # parse out the role, emoji, and optional message
-        print(msg.content)
         info = list(map(lambda str: str.strip(), msg.content.split(',')))
-        print(str(info[0]))
-        # try:
-        #     info[0] = await commands.EmojiConverter().convert(ctx, info[0])
-        # except Exception as e:
-        #     print('emoji exception')
-        #     print(e)
-        #     await ctx.send(f'Could not find emoji: {info[0]}')
-        #     return None
+        if info[0] not in self.emojis:
+            # check for custom emoji
+            try:
+                info[0] = await commands.PartialEmojiConverter().convert(ctx, info[0])
+            except Exception:
+                await ctx.send(f'Can\'t find this `{info[0]}` emoji')
+                return
 
         try:
             info[1] = await commands.RoleConverter().convert(ctx, info[1])
         except Exception:
             await ctx.send(f'Cound not find role: {info[1]}')
-            return None
+            return
         return info
 
     @commands.command(aliases=['rr'])
@@ -61,7 +64,7 @@ class ReactionRole(commands.Cog):
         channel = ''
         title = ''
         roles = []
-        colour = discord.Colour.blurple()
+        colour = None
 
         try:
             # get channel
@@ -133,25 +136,20 @@ class ReactionRole(commands.Cog):
                 '**Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang'
                 )
             while True:
-                msg = await self.bot.wait_for('message', check=self.check(ctx.author, ctx.channel))#, timeout=60.0)
+                msg = await self.bot.wait_for('message', check=self.check(ctx.author, ctx.channel), timeout=60.0)
                 if msg.content == 'done':
                     await ctx.send('aight thanks dawg')
                     break
 
                 info = await self.parse(ctx, msg)
                 if info is not None:
-                    # add to roles
                     roles.append(info)
-                    # add checkmark reaction to msg
+                    await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
                 else:
-                    # add red x reaction to msg
-                    pass
+                    await msg.add_reaction('\N{CROSS MARK}')
                 print(info)
-                # parse msg for emoji, role, and the optional message
-                # also emote to each message to indicate it's added.
 
-        except Exception as e:
-            print(e)
+        except asyncio.TimeoutError:
             o_obj = await embed(
                 ctx,
                 title='Bad Argument',
