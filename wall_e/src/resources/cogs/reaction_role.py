@@ -61,26 +61,23 @@ class ReactionRole(commands.Cog):
         return info
 
     async def send_react_message(self, ctx, channel: discord.TextChannel, title, colour, role_bindings):
-        def extract(binding):
-            for key in binding:
-                emojis.append(key)
-                role_msg = binding[key]
-                if role_msg['message'] == '':
-                    return f'{key} {role_msg["role"].mention}'
-                else:
-                    return f'{key} {role_msg["message"]}'
+        def extract(key):
+            emojis.append(key)
+            role_msg = role_bindings[key]
+            if role_msg['message'] == '':
+                return f'{key} {role_msg["role"].mention}'
+            else:
+                return f'{key} {role_msg["message"]}'
         emojis = []
 
         # make the embed
-        react_embed = embed(
+        react_embed = await embed(
             ctx,
             title=title,
             author=ctx.author.display_name,
             avatar=ctx.author.avatar_url,
             colour=colour,
-            content=[
-                ('', '\n'.join(map(extract, role_bindings)))
-            ],
+            description='\n'.join(map(extract, role_bindings)),
             footer='Self Assignable Roles'
         )
         # send the react message to the destination channel
@@ -179,14 +176,7 @@ class ReactionRole(commands.Cog):
 
                 info = await self.parse(ctx, msg)
                 if info is not None:
-                    print(type(info))
-                    print(type(info[0]))
-                    print(type(info[1]))
-                    print(type(info[2]))
-
                     role_binding.update({info[0]: {'role': info[1], 'message': info[2]}})
-                    # TODO: WAS HERE MAKING FINAL ROLE BINDING DATA STRUCTURE
-
                     await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
                 else:
                     await msg.add_reaction('\N{CROSS MARK}')
