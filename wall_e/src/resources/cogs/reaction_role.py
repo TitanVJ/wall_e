@@ -9,7 +9,7 @@ logger = logging.getLogger('wall_e')
 
 class ReactionRole(commands.Cog):
 
-    def __init__(self, bot, config):
+    def __init__(self, bot: discord.Client, config):
         self.bot = bot
         self.config = config
         emoji_file = open('resources/locales/emoji-compact.json')
@@ -158,3 +158,18 @@ class ReactionRole(commands.Cog):
 
         # make and send the reaction role
         await self.send_react_message(ctx, channel, title, colour, role_binding)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        # checks for user reactions and if they're using a reaction message
+        if self.bot.user.id == payload.user_id:
+            return
+
+        print('Detected reaction')
+        print(payload.user_id)
+        print(self.bot.user.id)
+
+        msg = payload.message_id
+        if msg in self.react_msgs:
+            user = self.bot.get_user(payload.user_id)
+            await user.add_roles(self.react_msgs[msg][payload.emoji])
