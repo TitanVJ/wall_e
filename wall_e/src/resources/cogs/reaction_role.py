@@ -15,14 +15,10 @@ class ReactionRole(commands.Cog):
         emoji_file = open('resources/locales/emoji-compact.json')
         self.emojis = json.load(emoji_file)
         emoji_file.close()
+        self.react_msgs = {}
 
     def check(self, author: discord.user, channel: discord.channel):
-        # makes use of closures
-        # will be useful for continuous monitoring of reaction embeds
-        def check(m):
-            return m.author == author and m.channel == channel
-
-        return check
+        return lambda m: m.author == author and m.channel == channel
 
     async def request(self, ctx, prompt, converter=None, timeout=60.0):
         input_check = self.check(ctx.author, ctx.channel)
@@ -35,7 +31,6 @@ class ReactionRole(commands.Cog):
             try:
                 ret = await converter.convert(ctx, ret)
             except Exception:
-                print('excepted')
                 return False, ret
         return True, ret
 
@@ -56,29 +51,24 @@ class ReactionRole(commands.Cog):
             await ctx.send(f'Cound not find role: {info[1]}')
             return
 
-        if len(info) == 2:
-            info.append('')
         return info
 
     async def send_react_message(self, ctx, channel: discord.TextChannel, title, colour, role_bindings):
         def extract(key):
             emojis.append(key)
             role_msg = role_bindings[key]
-            if role_msg['message'] == '':
-                return f'{key} {role_msg["role"].mention}'
-            else:
-                return f'{key} {role_msg["message"]}'
+            try:
+                return f'{key} `{role_msg[1]}`'
+            except IndexError:
+                return f'{key} {role_msg[0].mention}'
         emojis = []
 
         # make the embed
         react_embed = await embed(
             ctx,
             title=title,
-            author=ctx.author.display_name,
-            avatar=ctx.author.avatar_url,
             colour=colour,
-            description='\n'.join(map(extract, role_bindings)),
-            footer='Self Assignable Roles'
+            description='\n'.join(map(extract, role_bindings))
         )
         # send the react message to the destination channel
         react_msg = await channel.send(embed=react_embed)
@@ -171,12 +161,11 @@ class ReactionRole(commands.Cog):
             while True:
                 msg = await self.bot.wait_for('message', check=self.check(ctx.author, ctx.channel), timeout=60.0)
                 if msg.content == 'done':
-                    await ctx.send('aight thanks dawg')
                     break
 
                 info = await self.parse(ctx, msg)
                 if info is not None:
-                    role_binding.update({info[0]: {'role': info[1], 'message': info[2]}})
+                    role_binding.update({info[0]: info[1:]})
                     await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
                 else:
                     await msg.add_reaction('\N{CROSS MARK}')
@@ -196,8 +185,3 @@ class ReactionRole(commands.Cog):
 
         # make and send the reaction role
         await self.send_react_message(ctx, channel, title, colour, role_binding)
-
-        print(channel)
-        print(title)
-        print(colour)
-        print(role_binding)
