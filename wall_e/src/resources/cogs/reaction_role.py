@@ -99,16 +99,7 @@ class ReactionRole(commands.Cog):
 
             # check if channel found or not
             if not status:
-                e_obj = await embed(
-                    ctx,
-                    title='Bad Argument',
-                    author=self.config.get_config_value('bot_profile', 'BOT_NAME'),
-                    avatar=self.config.get_config_value('bot_profile', 'BOT_AVATAR'),
-                    colour=0xA6192E,
-                    content=[('Error', f'Couldn\'t find channel `{channel}`\nCommand terminated.')],
-                    footer='ReactRole Error'
-                )
-                await ctx.send(embed=e_obj)
+                await ctx.send(f'Channel "{channel}" not found. Redo command to try again.')
                 logger.info(f'[ReactionRole reactrole()] channel "{channel}" not found. Command exection terminated.')
                 return
             logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
@@ -132,18 +123,9 @@ class ReactionRole(commands.Cog):
             # check if valid otherwise set to default
             if not status:
                 if colour == 'none':
-                    await ctx.send('using default colour')
+                    await ctx.send('Using default colour.')
                 else:
-                    e_obj = await embed(
-                        ctx,
-                        title='Bad Argument',
-                        author=self.config.get_config_value('bot_profile', 'BOT_NAME'),
-                        avatar=self.config.get_config_value('bot_profile', 'BOT_AVATAR'),
-                        colour=0xA6192E,
-                        content=[('Error', f'{colour} isn\'t a real hex value. So we\' go with a default.')],
-                        footer='ReactRole Error'
-                    )
-                    await ctx.send(embed=e_obj)
+                    await ctx.send(f'0x{colour:x} is not a valid hex value. Using default.')
                 colour = 0x12FFD8
                 logger.info(f'[ReactionRole reactrole()] react role colour set to default value: 0x{colour:x}')
             else:
@@ -171,16 +153,7 @@ class ReactionRole(commands.Cog):
                     await msg.add_reaction('\N{CROSS MARK}')
 
         except asyncio.TimeoutError:
-            o_obj = await embed(
-                ctx,
-                title='Bad Argument',
-                author=self.config.get_config_value('bot_profile', 'BOT_NAME'),
-                avatar=self.config.get_config_value('bot_profile', 'BOT_AVATAR'),
-                colour=0xA6192E,
-                content=[('Error', 'Command timed out.')],
-                footer='ReactRole Error'
-            )
-            await ctx.send(embed=o_obj)
+            await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
             return
 
         # make and send the reaction role
