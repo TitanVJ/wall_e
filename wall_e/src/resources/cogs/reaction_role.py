@@ -79,6 +79,16 @@ class ReactionRole(commands.Cog):
 
         # send acknowledgement message to user with link to react embed
         await ctx.send(f'Done\nHeres your reaction role message: {react_msg.jump_url}')
+        return react_msg
+
+    async def watch_react_msg(self, ctx, react_msg: discord.Message, data):
+        # add msg_id and data as a {msg_id: {emoji_id:role_id, ...}}
+        emoji_role = {}
+        for key in data:
+            emoji_role.update({key: data[key][0].id})
+
+        self.react_msgs.update({react_msg.id: emoji_role})
+        print(self.react_msgs)
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
@@ -157,7 +167,8 @@ class ReactionRole(commands.Cog):
             return
 
         # make and send the reaction role
-        await self.send_react_message(ctx, channel, title, colour, role_binding)
+        react_msg = await self.send_react_message(ctx, channel, title, colour, role_binding)
+        await self.watch_react_msg(ctx, react_msg, role_binding)
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -165,11 +176,24 @@ class ReactionRole(commands.Cog):
         if self.bot.user.id == payload.user_id:
             return
 
-        print('Detected reaction')
-        print(payload.user_id)
-        print(self.bot.user.id)
-
         msg = payload.message_id
         if msg in self.react_msgs:
-            user = self.bot.get_user(payload.user_id)
-            await user.add_roles(self.react_msgs[msg][payload.emoji])
+            user = payload.member
+            try:
+                role_id = self.react_msgs[msg][payload.emoji]
+            except KeyError:
+                try:
+                    role_id = self.react_msgs[msg][payload.emoji.name]
+                except KeyError:
+                    # most like another emoji was added to the message but its not part of the role bindings
+                    print('non binding emoji reaction detected')
+                    return
+            guild = self.bot.get_guild(payload.guild_id)
+            role: discord.Role = discord.utils.get(guild.roles, id=role_id)
+
+            try:
+                await user.add_roles(role)
+            except discord.Forbidden:
+                channel = self.bot.get_channel(payload.channel_id)
+                await channel.send(f'What the *#%& is this ^@%)!!\nI don\'t have permission to give {user.mention}'
+                                   f'the \"{role.name}\" role')
