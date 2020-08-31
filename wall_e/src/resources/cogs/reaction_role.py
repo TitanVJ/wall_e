@@ -116,23 +116,42 @@ class ReactionRole(commands.Cog):
         return react_msg
 
     async def watch_react_msg(self, ctx, react_msg: discord.Message, data):
-        # add msg_id and data as a {msg_id: {emoji_id:role_id, ...}}
+        # add msg_id and data as a {msg_id: {emoji_id:role_id, ...}}\
         emoji_role = {}
         for key in data:
             emoji_role.update({key: data[key][0].id})
 
-        self.react_msgs.update({react_msg.id: emoji_role})
+        react_dict = {react_msg.id: emoji_role}
+        self.react_msgs.update(react_dict)
+
         # add to db
+        await self.update_database(react_dict, ctx.author)
+
+    async def update_database(self, react_dict, author: discord.Member):
+        # add row for the new
+
+        # covert any partial emoji keys to use it's id instead
+        react_list = list(map(list, list(list(react_dict.values())[0].items())))
+        for emoji in react_list:
+            emoji[0] = emoji[0].id if emoji[0] not in self.emojis else emoji[0]
+
+        key = list(react_dict.keys())[0]
+        try:
+            react_json = json.dumps(react_list)
+        except Exception as e:
+            print(f'json error: {e}')
+
+        sql_command = ('INSERT INTO Reaction_role (message_id, binders, author_name, author_id) VALUES '
+                       '(%s, %s, %s, %s);')
+
+        try:
+            self.curs.execute(sql_command, (key, react_json, author.name, author.id))
+        except Exception as e:
+            print(f'sql error {e}')
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
         logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
-
-        channel = ''
-        title = ''
-        role_binding = {}
-        colour = None
-
         try:
             # get channel
             status, channel = await self.request(
@@ -184,6 +203,8 @@ class ReactionRole(commands.Cog):
                 'The 3rd argument is *optional*, it puts a message next to the emoji instead of the role.\n' +
                 '**Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang'
                 )
+
+            role_binding = {}
             while True:
                 msg = await self.bot.wait_for('message', check=self.check(ctx.author, ctx.channel), timeout=60.0)
                 if msg.content == 'done':
