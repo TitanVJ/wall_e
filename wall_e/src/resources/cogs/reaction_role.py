@@ -88,7 +88,6 @@ class ReactionRole(commands.Cog):
             emoji_role.update({key: data[key][0].id})
 
         self.react_msgs.update({react_msg.id: emoji_role})
-        print(self.react_msgs)
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
@@ -135,7 +134,7 @@ class ReactionRole(commands.Cog):
                 if colour == 'none':
                     await ctx.send('Using default colour.')
                 else:
-                    await ctx.send(f'0x{colour:x} is not a valid hex value. Using default.')
+                    await ctx.send(f'"{colour}" is not a valid hex value. Using default.')
                 colour = 0x12FFD8
                 logger.info(f'[ReactionRole reactrole()] react role colour set to default value: 0x{colour:x}')
             else:
@@ -197,3 +196,32 @@ class ReactionRole(commands.Cog):
                 channel = self.bot.get_channel(payload.channel_id)
                 await channel.send(f'What the *#%& is this ^@%)!!\nI don\'t have permission to give {user.mention}'
                                    f'the \"{role.name}\" role')
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
+        # removes roles on unreacting on a reaction message
+        if self.bot.user.id == payload.user_id:
+            return
+        print(payload)
+
+        msg = payload.message_id
+        if msg in self.react_msgs:
+            guild = self.bot.get_guild(payload.guild_id)
+            user = guild.get_member(payload.user_id)
+            print(user)
+            try:
+                role_id = self.react_msgs[msg][payload.emoji]
+            except KeyError:
+                try:
+                    role_id = self.react_msgs[msg][payload.emoji.name]
+                except KeyError:
+                    print('non binding emoji reaction detected')
+                    return
+            role: discord.Role = discord.utils.get(guild.roles, id=role_id)
+
+            try:
+                await user.remove_roles(role)
+            except discord.Forbidden:
+                channel = self.bot.get_channel(payload.channel_id)
+                await channel.send(f'What the *#%& is this ^@%)!!\nI don\'t have permission to remove "{role.name}" '
+                                   f'role from{user.mention}')
