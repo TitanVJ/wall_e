@@ -4,6 +4,7 @@ import logging
 import json
 import asyncio
 from resources.utilities.embed import embed
+import psycopg2
 logger = logging.getLogger('wall_e')
 
 
@@ -16,6 +17,39 @@ class ReactionRole(commands.Cog):
         self.emojis = json.load(emoji_file)
         emoji_file.close()
         self.react_msgs = {}
+
+        # establish connection to db
+        try:
+            if self.config.get_config_value('basic_config', 'ENVIRONMENT') == 'LOCALHOST':
+                host = 'localhost'
+            else:
+                host = '{}_wall_e_db'.format(self.config.get_config_value('basic_config', 'COMPOSE_PROJECT_NAME'))
+
+            db_connection_string = (
+                f"dbname='{self.config.get_config_value('database', 'WALL_E_DB_DBNAME')}'"
+                f"user='{self.config.get_config_value('database', 'WALL_E_DB_USER')}' host='{host}'"
+            )
+            logger.info("[ReactionRole __init__] db_connection_string=[{}]".format(db_connection_string))
+
+            conn = psycopg2.connect(
+                "{}  password='{}'".format(
+                    db_connection_string, self.config.get_config_value('database', 'WALL_E_DB_PASSWORD')
+                )
+            )
+            conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+            self.curs = conn.cursor()
+            self.curs.execute('CREATE TABLE IF NOT EXISTS Reaction_role ('
+                              'message_id bigserial PRIMARY KEY, '
+                              'binders jsonb,'
+                              'author_name varchar(500),'
+                              'author_id bigserial'
+                              ');')
+            logger.info("[ReactionRole __init__] PostgreSQL connection established")
+        except Exception as e:
+            logger.error("[Reminders __init__] enountered following exception when setting up PostgreSQL "
+                         f"connection\n{e}")
+
+        # load from db
 
     def check(self, author: discord.user, channel: discord.channel):
         return lambda m: m.author == author and m.channel == channel
@@ -88,6 +122,7 @@ class ReactionRole(commands.Cog):
             emoji_role.update({key: data[key][0].id})
 
         self.react_msgs.update({react_msg.id: emoji_role})
+        # add to db
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
