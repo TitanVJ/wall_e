@@ -155,11 +155,20 @@ class ReactionRole(commands.Cog):
                     break
 
                 info = await self.parse(ctx, msg)
-                if info is not None:
-                    role_binding.update({info[0]: info[1:]})
-                    await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
-                else:
+
+                if info is None:
                     await msg.add_reaction('\N{CROSS MARK}')
+                    continue
+
+                # check if emoji or is already bound
+                roles = [role[0] for role in list(role_binding.values())]
+                if info[0] in list(role_binding.keys()) or info[1] in roles:
+                    await msg.add_reaction('\N{BLACK QUESTION MARK ORNAMENT}')
+                    await ctx.send(f'{info[0]} and/or {info[1].mention} is already bound')
+                    continue
+
+                role_binding.update({info[0]: info[1:]})
+                await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
 
         except asyncio.TimeoutError:
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
