@@ -49,6 +49,21 @@ class ReactionRole(commands.Cog):
             logger.error("[Reminders __init__] enountered following exception when setting up PostgreSQL "
                          f"connection\n{e}")
 
+    @commands.Cog.listener(name='on_ready')
+    async def load_from_db(self):
+        print('loading')
+        # load from db
+        sql_command = 'SELECT message_id, binders FROM Reaction_role;'
+
+        try:
+            self.curs.execute(sql_command)
+        except Exception as e:
+            print(f'loading from db error: {e}')
+
+        rows = self.curs.fetchall()
+        for row in rows:
+            self.react_msgs.update({row[0]: row[1]})
+
     def check(self, author: discord.user, channel: discord.channel):
         return lambda m: m.author == author and m.channel == channel
 
