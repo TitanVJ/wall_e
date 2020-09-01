@@ -11,7 +11,7 @@ logger = logging.getLogger('wall_e')
 class ReactionRole(commands.Cog):
 
     def __init__(self, bot: discord.Client, config):
-        self.bot = bot
+        self.bot: discord.Client = bot
         self.config = config
         emoji_file = open('resources/locales/emoji-compact.json')
         self.emojis = json.load(emoji_file)
@@ -48,8 +48,6 @@ class ReactionRole(commands.Cog):
         except Exception as e:
             logger.error("[Reminders __init__] enountered following exception when setting up PostgreSQL "
                          f"connection\n{e}")
-
-        # load from db
 
     def check(self, author: discord.user, channel: discord.channel):
         return lambda m: m.author == author and m.channel == channel
@@ -119,33 +117,22 @@ class ReactionRole(commands.Cog):
         # add msg_id and data as a {msg_id: {emoji_id:role_id, ...}}\
         emoji_role = {}
         for key in data:
-            emoji_role.update({key: data[key][0].id})
+            emoji = key.id if key not in self.emojis else key
+            emoji_role.update({emoji: data[key][0].id})
 
         react_dict = {react_msg.id: emoji_role}
         self.react_msgs.update(react_dict)
 
         # add to db
-        await self.update_database(react_dict, ctx.author)
+        await self.update_database(react_msg.id, emoji_role, ctx.author)
 
-    async def update_database(self, react_dict, author: discord.Member):
-        # add row for the new
-
-        # covert any partial emoji keys to use it's id instead
-        react_list = list(map(list, list(list(react_dict.values())[0].items())))
-        for emoji in react_list:
-            emoji[0] = emoji[0].id if emoji[0] not in self.emojis else emoji[0]
-
-        key = list(react_dict.keys())[0]
-        try:
-            react_json = json.dumps(react_list)
-        except Exception as e:
-            print(f'json error: {e}')
-
+    async def update_database(self, msg_id, react_bindings, author: discord.Member):
+        react_json = json.dumps(react_bindings)
         sql_command = ('INSERT INTO Reaction_role (message_id, binders, author_name, author_id) VALUES '
                        '(%s, %s, %s, %s);')
 
         try:
-            self.curs.execute(sql_command, (key, react_json, author.name, author.id))
+            self.curs.execute(sql_command, (msg_id, react_json, author.name, author.id))
         except Exception as e:
             print(f'sql error {e}')
 
@@ -244,7 +231,7 @@ class ReactionRole(commands.Cog):
         if msg in self.react_msgs:
             user = payload.member
             try:
-                role_id = self.react_msgs[msg][payload.emoji]
+                role_id = self.react_msgs[msg][payload.emoji.id]
             except KeyError:
                 try:
                     role_id = self.react_msgs[msg][payload.emoji.name]
@@ -275,7 +262,7 @@ class ReactionRole(commands.Cog):
             user = guild.get_member(payload.user_id)
             print(user)
             try:
-                role_id = self.react_msgs[msg][payload.emoji]
+                role_id = self.react_msgs[msg][payload.emoji.id]
             except KeyError:
                 try:
                     role_id = self.react_msgs[msg][payload.emoji.name]
