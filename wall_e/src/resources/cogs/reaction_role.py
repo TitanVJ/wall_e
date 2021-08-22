@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import tasks, commands
 import logging
 import json
 import asyncio
@@ -11,7 +11,8 @@ logger = logging.getLogger('wall_e')
 class ReactionRole(commands.Cog):
 
     def __init__(self, bot: discord.Client, config):
-        self.bot: discord.Client = bot
+        self.bot = bot
+        self.bot.guilds[0]
         self.config = config
         emoji_file = open('resources/locales/emoji-compact.json')
         self.emojis = json.load(emoji_file)
@@ -40,9 +41,11 @@ class ReactionRole(commands.Cog):
             self.curs = conn.cursor()
             self.curs.execute('CREATE TABLE IF NOT EXISTS Reaction_role ('
                               'message_id bigserial PRIMARY KEY, '
-                              'binders jsonb,'
+                              'channel_id bigserial',
+                              'emoji_role_binding jsonb,'
                               'author_name varchar(500),'
-                              'author_id bigserial'
+                              'author_id bigserial',
+                              'date timestamp'
                               ');')
             logger.info("[ReactionRole __init__] PostgreSQL connection established")
         except Exception as e:
@@ -141,7 +144,7 @@ class ReactionRole(commands.Cog):
         # add to db
         await self.update_database(react_msg.id, emoji_role, ctx.author)
 
-    async def update_database(self, msg_id, react_bindings, author: discord.Member):
+    async def update_database(self, msg_id, react_bindings, channel: discord.Channel, author: discord.Member):
         react_json = json.dumps(react_bindings)
         sql_command = ('INSERT INTO Reaction_role (message_id, binders, author_name, author_id) VALUES '
                        '(%s, %s, %s, %s);')
@@ -235,6 +238,7 @@ class ReactionRole(commands.Cog):
         # make and send the reaction role
         react_msg = await self.send_react_message(ctx, channel, title, colour, role_binding)
         await self.watch_react_msg(ctx, react_msg, role_binding)
+        # call add to db here and provide channel id as well
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
@@ -292,3 +296,18 @@ class ReactionRole(commands.Cog):
                 channel = self.bot.get_channel(payload.channel_id)
                 await channel.send(f'What the *#%& is this ^@%)!!\nI don\'t have permission to remove "{role.name}" '
                                    f'role from{user.mention}')
+
+    @tasks.loop(hours=24.0)
+    async def cleanup():
+        # check if all reaction roles still exist otherwise
+
+        sql_get_all = 'SELECT message_id FROM Reaction_role;'
+
+        try:
+            self.curs.execute(sql_get_all)
+        except Exception as e:
+            print(f'Cleanup get all error: {e}')
+
+        msg_ids = self.curs.fetchall()
+        for row in msg_ids:
+            self.bot.get_channel()
