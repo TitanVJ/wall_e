@@ -36,7 +36,7 @@ deleted_discord_pr_channels () {
 			log_channel_id="${list_of_channel_ids[$i]}"
 		fi
 
-		if [ "${list_of_channel_names[$i]}" = "pr-${pr_number}_reminders" ]; then
+		if [ "${list_of_channel_names[$i]}" = "pr-${pr_number}_bot_channel" ]; then
 			reminder_channel_id="${list_of_channel_ids[$i]}"
 		fi
 	done
@@ -76,6 +76,7 @@ if [ "${action}" = "closed" ]; then
 	if [[ "${merged}" = "false" && "${destination_branch_name}" = "master" ]]; then
 		git checkout "${branch_name}"
 		git pull origin "${branch_name}"
+		export CONTAINER_HOME_DIR=/usr/src/app;
 		export ENVIRONMENT=TEST;
 		export BRANCH_NAME=${branch_name};
 		export COMPOSE_PROJECT_NAME=TEST_${BRANCH_NAME};
