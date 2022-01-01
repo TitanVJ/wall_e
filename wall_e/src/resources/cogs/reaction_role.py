@@ -1,3 +1,4 @@
+import re
 import discord
 from discord.ext import tasks, commands
 import logging
@@ -5,6 +6,10 @@ import json
 import asyncio
 from resources.utilities.embed import embed
 import psycopg2
+import datetime
+import pytz
+from WalleModels.models import ReactRoles
+import json
 logger = logging.getLogger('wall_e')
 
 
@@ -12,61 +17,55 @@ class ReactionRole(commands.Cog):
 
     def __init__(self, bot: discord.Client, config):
         self.bot = bot
-        self.bot.guilds[0]
-        self.config = config
+        # self.bot.guilds[0]
+        # self.config = config
         emoji_file = open('resources/locales/emoji-compact.json')
         self.emojis = json.load(emoji_file)
         emoji_file.close()
         self.react_msgs = {}
 
         # establish connection to db
-        try:
-            if self.config.get_config_value('basic_config', 'ENVIRONMENT') == 'LOCALHOST':
-                host = 'localhost'
-            else:
-                host = '{}_wall_e_db'.format(self.config.get_config_value('basic_config', 'COMPOSE_PROJECT_NAME'))
+        # try:
+        #     if self.config.get_config_value('basic_config', 'ENVIRONMENT') == 'LOCALHOST':
+        #         host = 'localhost'
+        #     else:
+        #         host = '{}_wall_e_db'.format(self.config.get_config_value('basic_config', 'COMPOSE_PROJECT_NAME'))
 
-            db_connection_string = (
-                f"dbname='{self.config.get_config_value('database', 'WALL_E_DB_DBNAME')}'"
-                f"user='{self.config.get_config_value('database', 'WALL_E_DB_USER')}' host='{host}'"
-            )
-            logger.info("[ReactionRole __init__] db_connection_string=[{}]".format(db_connection_string))
+        #     db_connection_string = (
+        #         f"dbname='{self.config.get_config_value('database', 'WALL_E_DB_DBNAME')}'"
+        #         f"user='{self.config.get_config_value('database', 'WALL_E_DB_USER')}' host='{host}'"
+        #     )
+        #     logger.info("[ReactionRole __init__] db_connection_string=[{}]".format(db_connection_string))
 
-            conn = psycopg2.connect(
-                "{}  password='{}'".format(
-                    db_connection_string, self.config.get_config_value('database', 'WALL_E_DB_PASSWORD')
-                )
-            )
-            conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-            self.curs = conn.cursor()
-            self.curs.execute('CREATE TABLE IF NOT EXISTS Reaction_role ('
-                              'message_id bigserial PRIMARY KEY, '
-                              'channel_id bigserial',
-                              'emoji_role_binding jsonb,'
-                              'author_name varchar(500),'
-                              'author_id bigserial',
-                              'date timestamp'
-                              ');')
-            logger.info("[ReactionRole __init__] PostgreSQL connection established")
-        except Exception as e:
-            logger.error("[Reminders __init__] enountered following exception when setting up PostgreSQL "
-                         f"connection\n{e}")
+        #     conn = psycopg2.connect(
+        #         "{}  password='{}'".format(
+        #             db_connection_string, self.config.get_config_value('database', 'WALL_E_DB_PASSWORD')
+        #         )
+        #     )
+        #     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
+        #     self.curs = conn.cursor()
+        #     self.curs.execute('CREATE TABLE IF NOT EXISTS Reaction_role ('
+        #                       'message_id bigserial PRIMARY KEY, '
+        #                       'channel_id bigserial',
+        #                       'emoji_role_binding jsonb,'
+        #                       'author_name varchar(500),'
+        #                       'author_id bigserial',
+        #                       'date timestamp'
+        #                       ');')
+        #     logger.info("[ReactionRole __init__] PostgreSQL connection established")
+        # except Exception as e:
+        #     logger.error("[Reminders __init__] enountered following exception when setting up PostgreSQL "
+        #                  f"connection\n{e}")
 
     @commands.Cog.listener(name='on_ready')
     async def load_from_db(self):
-        print('loading')
-        # load from db
-        sql_command = 'SELECT message_id, binders FROM Reaction_role;'
+        print('loading react messages')
+        react_roles = await ReactRoles.get_all_react_roles()
 
-        try:
-            self.curs.execute(sql_command)
-        except Exception as e:
-            print(f'loading from db error: {e}')
-
-        rows = self.curs.fetchall()
-        for row in rows:
-            self.react_msgs.update({row[0]: row[1]})
-
+        for react_role in react_roles:
+            print(f'\tloading: {react_role}')
+            self.react_msgs.update( { react_role[0]: json.loads(react_role[1]) } )
+        print(self.react_msgs)
     def check(self, author: discord.user, channel: discord.channel):
         return lambda m: m.author == author and m.channel == channel
 
@@ -136,23 +135,25 @@ class ReactionRole(commands.Cog):
         emoji_role = {}
         for key in data:
             emoji = key.id if key not in self.emojis else key
-            emoji_role.update({emoji: data[key][0].id})
+            emoji_role.update({str(emoji): data[key][0].id})
 
         react_dict = {react_msg.id: emoji_role}
         self.react_msgs.update(react_dict)
 
         # add to db
-        await self.update_database(react_msg.id, emoji_role, ctx.author)
+        await self.update_database(react_msg.id, emoji_role, react_msg.channel, ctx.author)
 
-    async def update_database(self, msg_id, react_bindings, channel: discord.Channel, author: discord.Member):
-        react_json = json.dumps(react_bindings)
-        sql_command = ('INSERT INTO Reaction_role (message_id, binders, author_name, author_id) VALUES '
-                       '(%s, %s, %s, %s);')
+    async def update_database(self, msg_id, react_bindings, channel: discord.ChannelType, author: discord.Member):
 
-        try:
-            self.curs.execute(sql_command, (msg_id, react_json, author.name, author.id))
-        except Exception as e:
-            print(f'sql error {e}')
+        react_role = ReactRoles(
+                                message_id=msg_id,
+                                channel_id=channel.id,
+                                emoji_role_binding=json.dumps(react_bindings),
+                                author_id=author.id,
+                                author_name=author.name+'#'+author.discriminator,
+                                created_on=datetime.datetime.now(pytz.utc).timestamp()
+                                )
+        await ReactRoles.insert(react_role)
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
@@ -245,15 +246,17 @@ class ReactionRole(commands.Cog):
         # checks for user reactions and if they're using a reaction message
         if self.bot.user.id == payload.user_id:
             return
-
+        print(f"payload emoji: {payload.emoji}", f"emoji id: {payload.emoji.id}", f"emoji name: {payload.emoji.name}")
+        print(f"emoji id type: {type(payload.emoji.id)}")
         msg = payload.message_id
+        print(self.react_msgs[msg])
         if msg in self.react_msgs:
             user = payload.member
             try:
-                role_id = self.react_msgs[msg][payload.emoji.id]
+                role_id = self.react_msgs[msg][ str(payload.emoji.id)]
             except KeyError:
                 try:
-                    role_id = self.react_msgs[msg][payload.emoji.name]
+                    role_id = self.react_msgs[msg][ str(payload.emoji.name)]
                 except KeyError:
                     # most like another emoji was added to the message but its not part of the role bindings
                     print('non binding emoji reaction detected')
@@ -281,10 +284,10 @@ class ReactionRole(commands.Cog):
             user = guild.get_member(payload.user_id)
             print(user)
             try:
-                role_id = self.react_msgs[msg][payload.emoji.id]
+                role_id = self.react_msgs[msg][str(payload.emoji.id)]
             except KeyError:
                 try:
-                    role_id = self.react_msgs[msg][payload.emoji.name]
+                    role_id = self.react_msgs[msg][str(payload.emoji.name)]
                 except KeyError:
                     print('non binding emoji reaction detected')
                     return
@@ -297,17 +300,17 @@ class ReactionRole(commands.Cog):
                 await channel.send(f'What the *#%& is this ^@%)!!\nI don\'t have permission to remove "{role.name}" '
                                    f'role from{user.mention}')
 
-    @tasks.loop(hours=24.0)
-    async def cleanup():
-        # check if all reaction roles still exist otherwise
+    # @tasks.loop(hours=24.0)
+    # async def cleanup():
+    #     # check if all reaction roles still exist otherwise
 
-        sql_get_all = 'SELECT message_id FROM Reaction_role;'
+    #     sql_get_all = 'SELECT message_id FROM Reaction_role;'
 
-        try:
-            self.curs.execute(sql_get_all)
-        except Exception as e:
-            print(f'Cleanup get all error: {e}')
+    #     try:
+    #         self.curs.execute(sql_get_all)
+    #     except Exception as e:
+    #         print(f'Cleanup get all error: {e}')
 
-        msg_ids = self.curs.fetchall()
-        for row in msg_ids:
-            self.bot.get_channel()
+    #     msg_ids = self.curs.fetchall()
+    #     for row in msg_ids:
+    #         self.bot.get_channel()
