@@ -1,3 +1,4 @@
+from __future__ import annotations
 import datetime
 import time
 
@@ -6,6 +7,36 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.db import models
 from django.forms import model_to_dict
+
+class ReactRoles(models.Model):
+    react_role_id = models.BigAutoField(primary_key=True)
+    message_id = models.BigIntegerField(null=False, unique=True)
+    channel_id = models.BigIntegerField(null=False)
+    emoji_role_binding = models.TextField(null=False) # will store the json string
+    author_name = models.CharField(max_length=32, null=False)
+    author_id = models.BigIntegerField(null=False)
+    created_on = models.BigIntegerField(null=False)
+
+    class Meta:
+        db_table = 'WalleModels_react_roles'
+
+    @classmethod
+    @sync_to_async
+    def insert(cls, record: ReactRoles):
+        record.save()
+
+    @classmethod
+    @sync_to_async
+    def get_all_react_roles(cls):
+        """Returns list of all react role message id's and thier emoji-role bindings"""
+
+        return list((ReactRoles.objects.values_list('message_id', 'emoji_role_binding')))
+
+    @classmethod
+    @sync_to_async
+    def del_record_by_id(cls, id: int):
+        obj = ReactRoles.objects.filter(message_id=id)
+        obj.delete()
 
 
 class CommandStat(models.Model):
