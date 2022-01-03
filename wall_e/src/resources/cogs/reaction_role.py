@@ -17,45 +17,10 @@ class ReactionRole(commands.Cog):
 
     def __init__(self, bot: discord.Client, config):
         self.bot = bot
-        # self.bot.guilds[0]
-        # self.config = config
         emoji_file = open('resources/locales/emoji-compact.json')
         self.emojis = json.load(emoji_file)
         emoji_file.close()
         self.react_msgs = {}
-
-        # establish connection to db
-        # try:
-        #     if self.config.get_config_value('basic_config', 'ENVIRONMENT') == 'LOCALHOST':
-        #         host = 'localhost'
-        #     else:
-        #         host = '{}_wall_e_db'.format(self.config.get_config_value('basic_config', 'COMPOSE_PROJECT_NAME'))
-
-        #     db_connection_string = (
-        #         f"dbname='{self.config.get_config_value('database', 'WALL_E_DB_DBNAME')}'"
-        #         f"user='{self.config.get_config_value('database', 'WALL_E_DB_USER')}' host='{host}'"
-        #     )
-        #     logger.info("[ReactionRole __init__] db_connection_string=[{}]".format(db_connection_string))
-
-        #     conn = psycopg2.connect(
-        #         "{}  password='{}'".format(
-        #             db_connection_string, self.config.get_config_value('database', 'WALL_E_DB_PASSWORD')
-        #         )
-        #     )
-        #     conn.set_isolation_level(psycopg2.extensions.ISOLATION_LEVEL_AUTOCOMMIT)
-        #     self.curs = conn.cursor()
-        #     self.curs.execute('CREATE TABLE IF NOT EXISTS Reaction_role ('
-        #                       'message_id bigserial PRIMARY KEY, '
-        #                       'channel_id bigserial',
-        #                       'emoji_role_binding jsonb,'
-        #                       'author_name varchar(500),'
-        #                       'author_id bigserial',
-        #                       'date timestamp'
-        #                       ');')
-        #     logger.info("[ReactionRole __init__] PostgreSQL connection established")
-        # except Exception as e:
-        #     logger.error("[Reminders __init__] enountered following exception when setting up PostgreSQL "
-        #                  f"connection\n{e}")
 
     @commands.Cog.listener(name='on_ready')
     async def load_from_db(self):
