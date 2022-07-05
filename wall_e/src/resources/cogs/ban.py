@@ -337,7 +337,8 @@ class Ban(commands.Cog):
         def is_banned_user(msg):
             return msg.author == user
 
-        date = datetime.datetime.now() - datetime.timedelta(timeframe)
+        date = datetime.datetime.combine(datetime.date.today(), datetime.time(0))
+        date = date - datetime.timedelta(days=timeframe)
         logger.info(f"[Ban purge_message()] message from {user} will be purge starting from date {date}")
 
         for channel in channels:
@@ -348,7 +349,7 @@ class Ban(commands.Cog):
             # because the user wouldn't have any messages in these channels
             if view_perm is False or send_perm is False:
                 continue
-            else:
+            else: # permission is set or on neutral
                 await channel.purge(limit=100, check=is_banned_user, after=date, bulk=True)
 
     @commands.command()
