@@ -31,6 +31,7 @@ class ReactionRole(commands.Cog):
             print(f'\tloading: {react_role}')
             self.react_msgs.update( { react_role[0]: json.loads(react_role[1]) } )
         print(self.react_msgs)
+
     def check(self, author: discord.user, channel: discord.channel):
         return lambda m: m.author == author and m.channel == channel
 
@@ -45,8 +46,8 @@ class ReactionRole(commands.Cog):
             try:
                 ret = await converter.convert(ctx, ret)
             except Exception:
-                return False, ret
-        return True, ret
+                return None
+        return ret
 
     async def parse(self, ctx, msg: discord.Message):
         # parse out the role, emoji, and optional message
@@ -125,28 +126,28 @@ class ReactionRole(commands.Cog):
         logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
         try:
             # get channel
-            status, channel = await self.request(
+            channel = await self.request(
                 ctx,
                 prompt='What channel do you want the message in?',
                 converter=commands.TextChannelConverter()
             )
 
             # check if channel found or not
-            if not status:
+            if type(channel) != discord.ChannelType:
                 await ctx.send(f'Channel "{channel}" not found. Redo command to try again.')
                 logger.info(f'[ReactionRole reactrole()] channel "{channel}" not found. Command exection terminated.')
                 return
             logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
 
             # get title for
-            _, title = await self.request(
+            title = await self.request(
                 ctx,
                 'What do you want the title to say?'
             )
             logger.info(f'[ReactionRole reactrole()] react role title set to: {title}')
 
             # get colour
-            status, colour = await self.request(
+            colour = await self.request(
                 ctx,
                 'Enter a colour for the embed message. Enter `none` to skip this and use the default colour.\n' +
                 '**Need help picking a colour?** Check out: <https://htmlcolorcodes.com/>\n' +
@@ -155,7 +156,7 @@ class ReactionRole(commands.Cog):
             )
 
             # check if valid otherwise set to default
-            if not status:
+            if type(colour) != discord.Color:
                 if colour == 'none':
                     await ctx.send('Using default colour.')
                 else:
