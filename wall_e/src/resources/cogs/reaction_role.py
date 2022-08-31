@@ -133,7 +133,7 @@ class ReactionRole(commands.Cog):
             )
 
             # check if channel found or not
-            if type(channel) != discord.ChannelType:
+            if type(channel) != discord.TextChannel:
                 await ctx.send(f'Channel "{channel}" not found. Redo command to try again.')
                 logger.info(f'[ReactionRole reactrole()] channel "{channel}" not found. Command exection terminated.')
                 return
@@ -207,7 +207,7 @@ class ReactionRole(commands.Cog):
         await self.watch_react_msg(ctx, react_msg, role_binding)
         # call add to db here and provide channel id as well
 
-    @commands.Cog.listener()
+    @commands.Cog.listener() # TODO: emoji payload can be 1 line with ternery op on emoji.id
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         # checks for user reactions and if they're using a reaction message
         if self.bot.user.id == payload.user_id:
