@@ -17,6 +17,39 @@ import django_db_orm_settings
 logger = logging.getLogger('wall_e')
 
 
+class ReactRoles(models.Model):
+    # TODO: clean up and update this model
+
+    react_role_id = models.BigAutoField(primary_key=True)
+    message_id = models.BigIntegerField(null=False, unique=True)
+    channel_id = models.BigIntegerField(null=False)
+    emoji_role_binding = models.TextField(null=False) # will store the json string
+    author_name = models.CharField(max_length=32, null=False)
+    author_id = models.BigIntegerField(null=False)
+    created_on = models.BigIntegerField(null=False)
+
+    class Meta:
+        db_table = 'WalleModels_react_roles'
+
+    @classmethod
+    @sync_to_async
+    def insert(cls, record: ReactRoles):
+        record.save()
+
+    @classmethod
+    @sync_to_async
+    def get_all_react_roles(cls):
+        """Returns list of all react role message id's and thier emoji-role bindings"""
+
+        return list((ReactRoles.objects.values_list('message_id', 'emoji_role_binding')))
+
+    @classmethod
+    @sync_to_async
+    def del_record_by_id(cls, id: int):
+        obj = ReactRoles.objects.filter(message_id=id)
+        obj.delete()
+
+
 class BanRecords(models.Model):
     ban_id = GeneratedIdentityField(primary_key=True)
     username = models.CharField(max_length=32, null=False)
@@ -73,36 +106,6 @@ class BanRecords(models.Model):
         return f"ban_id=[{self.ban_id}] username=[{self.username}] user_id=[{self.user_id}] " \
                f"mod=[{self.mod}] mod_id=[{self.mod_id}] date=[{self.ban_date}] reason=[{self.reason}]" \
                f"unban_date=[{self.unban_date}]"
-
-class ReactRoles(models.Model):
-    react_role_id = models.BigAutoField(primary_key=True)
-    message_id = models.BigIntegerField(null=False, unique=True)
-    channel_id = models.BigIntegerField(null=False)
-    emoji_role_binding = models.TextField(null=False) # will store the json string
-    author_name = models.CharField(max_length=32, null=False)
-    author_id = models.BigIntegerField(null=False)
-    created_on = models.BigIntegerField(null=False)
-
-    class Meta:
-        db_table = 'WalleModels_react_roles'
-
-    @classmethod
-    @sync_to_async
-    def insert(cls, record: ReactRoles):
-        record.save()
-
-    @classmethod
-    @sync_to_async
-    def get_all_react_roles(cls):
-        """Returns list of all react role message id's and thier emoji-role bindings"""
-
-        return list((ReactRoles.objects.values_list('message_id', 'emoji_role_binding')))
-
-    @classmethod
-    @sync_to_async
-    def del_record_by_id(cls, id: int):
-        obj = ReactRoles.objects.filter(message_id=id)
-        obj.delete()
 
 
 class CommandStat(models.Model):
