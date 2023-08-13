@@ -21,6 +21,18 @@ class ReactionRole(commands.Cog):
         self.emojis = json.load(emoji_file)
         emoji_file.close()
         self.react_msgs = {}
+        self.CHANNEL_PROMPT = "Which channel do you want the message in? `#` mention the channel."
+        self.TITLE_PROMPT = "Provide a title for the message. You can use Discord markup in the title."
+        self.COLOUR_PROMPT = """Enter a colour, in hex format, for the message embed. Enter `none` to skip and use default colour\n\
+                                **Need helping picking a color?** Check out: <https://htmlcolorcodes.com/>\n\
+                                """
+        self.ROLES_PROMPT = """Time to add roles. Keep adding them one at a time, when you\'re done type `done`.\n\
+                                Heres the format for adding roles:\n\
+                                ```<emoji>, <role>, [<description of some sort>]```\
+                                Ensure the list arguments are **comma** seperated\n\
+                                The 3rd argument is *optional*, it puts a message next to the emoji instead of the role.\n\
+                                **Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang"""
+
 
     @commands.Cog.listener(name='on_ready')
     async def load_from_db(self):
@@ -126,11 +138,7 @@ class ReactionRole(commands.Cog):
         logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
         try:
             # get channel
-            channel = await self.request(
-                ctx,
-                prompt='What channel do you want the message in?',
-                converter=commands.TextChannelConverter()
-            )
+            channel = await self.request(ctx,self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
 
             # check if channel found or not
             if type(channel) != discord.TextChannel:
@@ -140,20 +148,11 @@ class ReactionRole(commands.Cog):
             logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
 
             # get title for
-            title = await self.request(
-                ctx,
-                'What do you want the title to say?'
-            )
+            title = await self.request(ctx, self.TITLE_PROMPT)
             logger.info(f'[ReactionRole reactrole()] react role title set to: {title}')
 
             # get colour
-            colour = await self.request(
-                ctx,
-                'Enter a colour for the embed message. Enter `none` to skip this and use the default colour.\n' +
-                '**Need help picking a colour?** Check out: <https://htmlcolorcodes.com/>\n' +
-                '**Hexcode Format**: \n\t**0x**<hex> OR **#**<hex>',
-                commands.ColourConverter()
-            )
+            colour = await self.request(ctx, self.COLOUR_PROMPT, commands.ColourConverter())
 
             # check if valid otherwise set to default
             if type(colour) != discord.Color:
@@ -167,14 +166,7 @@ class ReactionRole(commands.Cog):
                 logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
 
             # emoji, role, optional message
-            await ctx.send(
-                'Time to add roles. Keep adding them one at a time, when you\'re done type `done`.\n' +
-                'Heres the format for adding roles:\n' +
-                '```<emoji>, <role>, [<description of some sort>]```' +
-                'Ensure the list arguments are **comma** seperated\n'
-                'The 3rd argument is *optional*, it puts a message next to the emoji instead of the role.\n' +
-                '**Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang'
-                )
+            await ctx.send(self.ROLES_PROMPT)
 
             role_binding = {}
             while True:
