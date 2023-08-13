@@ -23,15 +23,12 @@ class ReactionRole(commands.Cog):
         self.react_msgs = {}
         self.CHANNEL_PROMPT = "Which channel do you want the message in? `#` mention the channel."
         self.TITLE_PROMPT = "Provide a title for the message. You can use Discord markup in the title."
-        self.COLOUR_PROMPT = """Enter a colour, in hex format, for the message embed. Enter `none` to skip and use default colour\n\
-                                **Need helping picking a color?** Check out: <https://htmlcolorcodes.com/>\n\
-                                """
-        self.ROLES_PROMPT = """Time to add roles. Keep adding them one at a time, when you\'re done type `done`.\n\
-                                Heres the format for adding roles:\n\
-                                ```<emoji>, <role>, [<description of some sort>]```\
-                                Ensure the list arguments are **comma** seperated\n\
-                                The 3rd argument is *optional*, it puts a message next to the emoji instead of the role.\n\
-                                **Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang"""
+        self.COLOUR_PROMPT = ("Enter a colour for the embed, in hex format. Enter `none` to use default colour.\n"
+                              "**Need helping picking a color?** Check out: <https://htmlcolorcodes.com/>")
+        self.ROLES_PROMPT = ("Add emojis and roles. Add then one at a time, when done type `done`.\n"
+                             "Enter in this format:\n```<emoji>, <@role>, [optional description]```"
+                             "Make sure the args are comma seperated.\n"
+                             "**Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang")
 
 
     @commands.Cog.listener(name='on_ready')
@@ -159,9 +156,9 @@ class ReactionRole(commands.Cog):
                 if colour == 'none':
                     await ctx.send('Using default colour.')
                 else:
-                    await ctx.send(f'"{colour}" is not a valid hex value. Using default.')
-                colour = 0x12FFD8
-                logger.info(f'[ReactionRole reactrole()] react role colour set to default value: 0x{colour:x}')
+                    await ctx.send(f'"{colour}" is not a valid colour. Using default colour.')
+                colour = discord.Color.blurple()
+                logger.info(f'[ReactionRole reactrole()] react role colour set to default value: 0x{colour}')
             else:
                 logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
 
