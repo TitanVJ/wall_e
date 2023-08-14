@@ -152,15 +152,11 @@ class ReactionRole(commands.Cog):
             colour = await self.request(ctx, self.COLOUR_PROMPT, commands.ColourConverter())
 
             # check if valid otherwise set to default
-            if type(colour) != discord.Color:
-                if colour == 'none':
-                    await ctx.send('Using default colour.')
-                else:
-                    await ctx.send(f'"{colour}" is not a valid colour. Using default colour.')
+            if not colour:
                 colour = discord.Color.blurple()
-                logger.info(f'[ReactionRole reactrole()] react role colour set to default value: 0x{colour}')
-            else:
-                logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
+            await ctx.send('Using default colour:' if colour==discord.Color.blurple() else 'Colour set to:')
+            await ctx.send(f'https://singlecolorimage.com/get/{colour.value:x}/50x50')
+            logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
 
             # emoji, role, optional message
             await ctx.send(self.ROLES_PROMPT)
