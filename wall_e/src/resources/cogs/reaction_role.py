@@ -131,7 +131,7 @@ class ReactionRole(commands.Cog):
             logger.info(f'[ReactionRole reactrole()] react role title set to: {title}')
 
             # get colour
-            colour = await self.request(ctx, self.COLOUR_PROMPT, commands.ColourConverter())
+            colour = await self.request(ctx, self.COLOUR_PROMPT, commands.ColourConverter(), 120)
 
             # check if valid otherwise set to default
             if not colour:
