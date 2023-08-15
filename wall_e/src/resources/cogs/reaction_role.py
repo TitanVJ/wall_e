@@ -156,6 +156,7 @@ class ReactionRole(commands.Cog):
             colour=colour,
             description='\n'.join(desc_lst)
         )
+        if not rr_embed: return
         react_msg = await channel.send(embed=rr_embed)
 
         # add reactions to message
