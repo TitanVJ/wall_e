@@ -10,6 +10,7 @@ import datetime
 import pytz
 from WalleModels.models import ReactRoles
 import json
+from emoji import is_emoji
 logger = logging.getLogger('wall_e')
 
 
@@ -57,25 +58,6 @@ class ReactionRole(commands.Cog):
             except Exception:
                 return None
         return ret
-
-    async def parse(self, ctx, msg: discord.Message):
-        # parse out the role, emoji, and optional message
-        info = list(map(lambda str: str.strip(), msg.content.split(',')))
-        if info[0] not in self.emojis:
-            # check for custom emoji
-            try:
-                info[0] = await commands.PartialEmojiConverter().convert(ctx, info[0])
-            except Exception:
-                await ctx.send(f'Can\'t find this `{info[0]}` emoji')
-                return
-
-        try:
-            info[1] = await commands.RoleConverter().convert(ctx, info[1])
-        except Exception:
-            await ctx.send(f'Cound not find role: {info[1]}')
-            return
-
-        return info
 
     async def send_react_message(self, ctx, channel: discord.TextChannel, title, colour, role_bindings):
         def extract(key):
@@ -162,25 +144,30 @@ class ReactionRole(commands.Cog):
             await ctx.send(self.ROLES_PROMPT)
 
             role_binding = {}
+            roles = []
             while True:
                 msg = await self.bot.wait_for('message', check=self.check(ctx.author, ctx.channel), timeout=60.0)
                 if msg.content == 'done':
                     break
 
-                info = await self.parse(ctx, msg)
-
-                if info is None:
+                # parse message into parts
+                erd = dict(zip(['emoji', 'role', 'desc'], map(lambda s: s.strip(), msg.content.split(','))))
+                try:
+                    if not is_emoji(erd['emoji']):
+                        erd['emoji'] = await commands.PartialEmojiConverter().convert(ctx, erd['emoji'])
+                    erd['role'] = await commands.RoleConverter().convert(ctx, erd['role'])
+                except Exception as e:
                     await msg.add_reaction('\N{CROSS MARK}')
+                    await ctx.send(f'{"Role"if isinstance(e, commands.RoleNotFound) else "Emoji"} not found.')
                     continue
 
-                # check if emoji or is already bound
-                roles = [role[0] for role in list(role_binding.values())]
-                if info[0] in list(role_binding.keys()) or info[1] in roles:
+                if erd['emoji'] in role_binding.keys() or erd['role'] in roles:
                     await msg.add_reaction('\N{BLACK QUESTION MARK ORNAMENT}')
-                    await ctx.send(f'{info[0]} and/or {info[1].mention} is already bound')
+                    await ctx.send(f'{erd["emoji"]} and/or {erd["role"].mention} is already bound')
                     continue
 
-                role_binding.update({info[0]: info[1:]})
+                roles.append(erd['role'])
+                role_binding.update( {erd['emoji']: [ erd['role'], erd.get('desc') ]} )
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
 
         except asyncio.TimeoutError:
