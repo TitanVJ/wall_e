@@ -71,9 +71,9 @@ class ReactionRole(commands.Cog):
             channel, _ = await self.request(ctx,self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
 
             # check if channel found or not
-            if type(channel) != discord.TextChannel:
-                await ctx.send(f'Channel "{channel}" not found. Redo command to try again.')
-                logger.info(f'[ReactionRole reactrole()] channel "{channel}" not found. Command exection terminated.')
+            if not channel:
+                await ctx.send(f'Channel not found. Redo command to try again.')
+                logger.info(f'[ReactionRole reactrole()] channel not found. Command exection terminated.')
                 return
             logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
 
