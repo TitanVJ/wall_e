@@ -59,18 +59,6 @@ class ReactionRole(commands.Cog):
                 return None, msg
         return ret, msg
 
-    async def update_database(self, msg_id, react_bindings, channel: discord.ChannelType, author: discord.Member):
-
-        react_role = ReactRoles(
-                                message_id=msg_id,
-                                channel_id=channel.id,
-                                emoji_role_binding=json.dumps(react_bindings),
-                                author_id=author.id,
-                                author_name=author.name+'#'+author.discriminator,
-                                created_on=datetime.datetime.now(pytz.utc).timestamp()
-                                )
-        await ReactRoles.insert(react_role)
-
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
         # TODO: add exit functionality
@@ -165,7 +153,16 @@ class ReactionRole(commands.Cog):
         self.react_msgs.update({react_msg.id : emoji_roles})
 
         # update database
-        await self.update_database(react_msg.id, emoji_roles, channel, ctx.author)
+        rr = ReactRoles(
+            message_id=react_msg.id,
+            channel_id=channel.id,
+            emoji_role_binding=json.dumps(emoji_roles),
+            author_id=ctx.author.id,
+            author_name=ctx.author.name+'#'+ctx.author.discriminator,
+            created_on=datetime.datetime.now(pytz.utc).timestamp()
+        )
+        await ReactRoles.insert(rr)
+
 
     @commands.Cog.listener() # TODO: emoji payload can be 1 line with ternery op on emoji.id
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
