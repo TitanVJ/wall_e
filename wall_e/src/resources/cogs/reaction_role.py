@@ -59,19 +59,6 @@ class ReactionRole(commands.Cog):
                 return None, msg
         return ret, msg
 
-    async def watch_react_msg(self, ctx, react_msg: discord.Message, data):
-        # add msg_id and data as a {msg_id: {emoji_id:role_id, ...}}\
-        emoji_role = {}
-        for key in data:
-            emoji = key.id if key not in self.emojis else key
-            emoji_role.update({str(emoji): data[key][0].id})
-
-        react_dict = {react_msg.id: emoji_role}
-        self.react_msgs.update(react_dict)
-
-        # add to db
-        await self.update_database(react_msg.id, emoji_role, react_msg.channel, ctx.author)
-
     async def update_database(self, msg_id, react_bindings, channel: discord.ChannelType, author: discord.Member):
 
         react_role = ReactRoles(
@@ -116,8 +103,9 @@ class ReactionRole(commands.Cog):
             # emoji, role, optional message
             await ctx.send(self.ROLES_PROMPT)
 
-            emoji_roles = {}
-            desc_lst = []
+            emoji_roles = {}    # { str(emoji) : role-id }
+            desc_lst = []       # [ str( emoji @role [-desc] ), ... ]
+            e_ids = []          # [ emoji/str(emoji.id), ... ]
             while True:
                 content, msg = await self.request(ctx)
                 if content == 'done': break
@@ -130,19 +118,22 @@ class ReactionRole(commands.Cog):
                 try:
                     if not is_emoji(emoji):
                         emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
+                        e_ids.append(str(emoji.id))
+                    else:
+                        e_ids.append(emoji)
                     role = await commands.RoleConverter().convert(ctx, role)
                 except Exception as e:
                     await msg.add_reaction('\N{CROSS MARK}')
                     await ctx.send(f'{"Role"if isinstance(e, commands.RoleNotFound) else "Emoji"} not found')
                     continue
 
-                if emoji in emoji_roles.keys() or role in emoji_roles.values():
+                if emoji in emoji_roles.keys() or role.id in emoji_roles.values():
                     await msg.add_reaction('\N{BLACK QUESTION MARK ORNAMENT}')
                     await ctx.send(f'{emoji} and/or {role.mention} is already bound')
                     continue
 
                 desc_lst.append(f'{emoji} {role.mention} {f"- {desc}" if desc else ""}')
-                emoji_roles.update({emoji:role})
+                emoji_roles.update({emoji:role.id})
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
 
         except asyncio.TimeoutError:
@@ -157,15 +148,24 @@ class ReactionRole(commands.Cog):
             description='\n'.join(desc_lst)
         )
         if not rr_embed: return
+
+        # send the react msg
         react_msg = await channel.send(embed=rr_embed)
 
         # add reactions to message
         for emoji in emoji_roles.keys():
             await react_msg.add_reaction(emoji)
 
+        # send link to caller
         await ctx.send(f'Done\nHere\'s your reaction role message: {react_msg.jump_url}')
-        # await self.watch_react_msg(ctx, react_msg, emoji_roles)
-        # call add to db here and provide channel id as well
+
+        emoji_roles = dict(zip(e_ids, emoji_roles.values()))
+
+        # update local react watch list
+        self.react_msgs.update({react_msg.id : emoji_roles})
+
+        # update database
+        await self.update_database(react_msg.id, emoji_roles, channel, ctx.author)
 
     @commands.Cog.listener() # TODO: emoji payload can be 1 line with ternery op on emoji.id
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
