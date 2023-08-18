@@ -51,6 +51,7 @@ class ReactionRole(commands.Cog):
         if prompt: await ctx.send(prompt)
         msg = await self.bot.wait_for('message', check=input_check, timeout=timeout)
         ret = msg.content
+        if ret.lower() == 'exit': raise Exception
 
         if converter:
             try:
@@ -63,6 +64,8 @@ class ReactionRole(commands.Cog):
     async def reactrole(self, ctx):
         # TODO: add exit functionality
         logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
+
+        await ctx.send("## To terminate process at any point type `exit`")
         try:
             # get channel
             channel, _ = await self.request(ctx,self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
@@ -126,6 +129,9 @@ class ReactionRole(commands.Cog):
 
         except asyncio.TimeoutError:
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
+            return
+        except Exception:
+            logger.info("[ReactionRole reactRole()] Caller involked exit. Process terminated.")
             return
 
         # make and send the reaction role
