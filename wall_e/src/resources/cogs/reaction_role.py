@@ -22,15 +22,14 @@ class ReactionRole(commands.Cog):
         self.emojis = json.load(emoji_file)
         emoji_file.close()
         self.react_msgs = {}
-        self.CHANNEL_PROMPT = "Which channel do you want the message in? `#` mention the channel."
-        self.TITLE_PROMPT = "Provide a title for the message. You can use Discord markup in the title."
-        self.COLOUR_PROMPT = ("Enter a colour for the embed, in hex format. Enter `none` to use default colour.\n"
+        self.CHANNEL_PROMPT = "## Which channel do you want the message in?"
+        self.TITLE_PROMPT = "## Provide a title for the message. You can use Discord markup in the title."
+        self.COLOUR_PROMPT = ("## Enter a colour for the embed in hex format. Enter `none` to use default colour.\n"
                               "**Need helping picking a color?** Check out: <https://htmlcolorcodes.com/>")
-        self.ROLES_PROMPT = ("Add emojis and roles. Add then one at a time, when done type `done`.\n"
-                             "Enter in this format:\n```<emoji>, <@role>, [optional description]```"
-                             "Make sure the args are comma seperated.\n"
-                             "**Example**:\n:smiling_imp:, Froshee\n :snake:,Tab-Life, React if ur python gang")
-
+        self.ROLES_PROMPT = ("## Add emojis and roles one at a time, when done type `done`.\n"
+                             "Enter in this format:\n```emoji, @role, optional description```"
+                             "Comma seperate the args. Description can include Discord markup.\n"
+                             "**Example**:\n:smiling_imp:, @Froshee\n :snake:, @Tab-Life, React for **python** gang")
 
     @commands.Cog.listener(name='on_ready')
     async def load_from_db(self):
@@ -45,13 +44,14 @@ class ReactionRole(commands.Cog):
     def check(self, author: discord.user, channel: discord.channel):
         return lambda m: m.author == author and m.channel == channel
 
-    async def request(self, ctx, prompt='', converter=None, timeout=60.0):
+    async def request(self, ctx, prompt='', case_s=False, converter=None, timeout=60.0):
         input_check = self.check(ctx.author, ctx.channel)
 
         if prompt: await ctx.send(prompt)
         msg = await self.bot.wait_for('message', check=input_check, timeout=timeout)
         ret = msg.content
         if ret.lower() == 'exit': raise Exception
+        if not case_s: ret = ret.lower()
 
         if converter:
             try:
@@ -78,7 +78,7 @@ class ReactionRole(commands.Cog):
             logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
 
             # get title for
-            title, _ = await self.request(ctx, self.TITLE_PROMPT)
+            title, _ = await self.request(ctx, self.TITLE_PROMPT, case_s=True)
             logger.info(f'[ReactionRole reactrole()] react role title set to: {title}')
 
             # get colour
@@ -98,7 +98,7 @@ class ReactionRole(commands.Cog):
             desc_lst = []       # [ str( emoji @role [-desc] ), ... ]
             e_ids = []          # [ emoji/str(emoji.id), ... ]
             while True:
-                content, msg = await self.request(ctx)
+                content, msg = await self.request(ctx, case_s=True)
                 if content == 'done': break
 
                 # parse message into parts
