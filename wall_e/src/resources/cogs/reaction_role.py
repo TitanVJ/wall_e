@@ -173,61 +173,48 @@ class ReactionRole(commands.Cog):
     @commands.Cog.listener() # TODO: emoji payload can be 1 line with ternery op on emoji.id
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         # checks for user reactions and if they're using a reaction message
-        if self.bot.user.id == payload.user_id:
-            return
+        if self.bot.user.id == payload.user_id: return
         print(f"payload emoji: {payload.emoji}", f"emoji id: {payload.emoji.id}", f"emoji name: {payload.emoji.name}")
         print(f"emoji id type: {type(payload.emoji.id)}")
         msg = payload.message_id
         print(self.react_msgs[msg])
         if msg in self.react_msgs:
-            user = payload.member
-            try:
-                role_id = self.react_msgs[msg][ str(payload.emoji.id)]
-            except KeyError:
-                try:
-                    role_id = self.react_msgs[msg][ str(payload.emoji.name)]
-                except KeyError:
-                    # most like another emoji was added to the message but its not part of the role bindings
-                    print('non binding emoji reaction detected')
-                    return
             guild = self.bot.get_guild(payload.guild_id)
-            role: discord.Role = discord.utils.get(guild.roles, id=role_id)
-
+            user = payload.member
+            emoji = payload.emoji
+            emoji = str(emoji.id) if emoji.id else emoji.name
             try:
+                role_id = self.react_msgs[msg][emoji]
+                role: discord.Role = discord.utils.get(guild.roles, id=role_id)
                 await user.add_roles(role)
+            except KeyError:
+                print('non binding emoji')
+                return
             except discord.Forbidden:
-                channel = self.bot.get_channel(payload.channel_id)
-                await channel.send(f'What the *#%& is this ^@%)!!\nI don\'t have permission to give {user.mention}'
-                                   f'the \"{role.name}\" role')
+                logger.info("[ReactionRole on_raw_reaction_add()] @Minions I don't have role management perms.")
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         # removes roles on unreacting on a reaction message
-        if self.bot.user.id == payload.user_id:
-            return
+        if self.bot.user.id == payload.user_id: return
         print(payload)
 
         msg = payload.message_id
         if msg in self.react_msgs:
             guild = self.bot.get_guild(payload.guild_id)
             user = guild.get_member(payload.user_id)
+            emoji = payload.emoji
+            emoji = str(emoji.id) if emoji.id else emoji.name
             print(user)
             try:
-                role_id = self.react_msgs[msg][str(payload.emoji.id)]
-            except KeyError:
-                try:
-                    role_id = self.react_msgs[msg][str(payload.emoji.name)]
-                except KeyError:
-                    print('non binding emoji reaction detected')
-                    return
-            role: discord.Role = discord.utils.get(guild.roles, id=role_id)
-
-            try:
+                role_id = self.react_msgs[msg][emoji]
+                role: discord.Role = discord.utils.get(guild.roles, id=role_id)
                 await user.remove_roles(role)
+            except KeyError:
+                print('non binding emoji')
+                return
             except discord.Forbidden:
-                channel = self.bot.get_channel(payload.channel_id)
-                await channel.send(f'What the *#%& is this ^@%)!!\nI don\'t have permission to remove "{role.name}" '
-                                   f'role from{user.mention}')
+                logger.info("[ReactionRole on_raw_reaction_remove()] @Minions I don't have role management perms.")
 
     # @tasks.loop(hours=24.0)
     # async def cleanup():
