@@ -62,41 +62,36 @@ class ReactionRole(commands.Cog):
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
-        # TODO: add exit functionality
         logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
 
         await ctx.send("## To terminate process at any point type `exit`")
         try:
-            # get channel
-            channel, _ = await self.request(ctx,self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
-
-            # check if channel found or not
+            # Get channel
+            channel, _ = await self.request(ctx, self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
             if not channel:
                 await ctx.send(f'Channel not found. Redo command to try again.')
                 logger.info(f'[ReactionRole reactrole()] channel not found. Command exection terminated.')
                 return
             logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
 
-            # get title for
+            # Get title for
             title, _ = await self.request(ctx, self.TITLE_PROMPT, case_s=True)
             logger.info(f'[ReactionRole reactrole()] react role title set to: {title}')
 
-            # get colour
-            colour, _ = await self.request(ctx, self.COLOUR_PROMPT, commands.ColourConverter(), 120)
-
-            # check if valid otherwise set to default
+            # Get colour
+            colour, _ = await self.request(ctx, self.COLOUR_PROMPT, converter=commands.ColourConverter(), timeout=120)
             if not colour:
                 colour = discord.Color.blurple()
+            logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
             await ctx.send('Using default colour:' if colour==discord.Color.blurple() else 'Colour set to:')
             await ctx.send(f'https://singlecolorimage.com/get/{colour.value:x}/50x50')
-            logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
 
-            # emoji, role, optional message
+            # Get emoji, role, optional message
             await ctx.send(self.ROLES_PROMPT)
 
-            emoji_roles = {}    # { str(emoji) : role-id }
-            desc_lst = []       # [ str( emoji @role [-desc] ), ... ]
-            e_ids = []          # [ emoji/str(emoji.id), ... ]
+            emojis = {}
+            role_ids = []
+            desc_lst = []
             while True:
                 content, msg = await self.request(ctx, case_s=True)
                 if content == 'done': break
@@ -109,22 +104,20 @@ class ReactionRole(commands.Cog):
                 try:
                     if not is_emoji(emoji):
                         emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
-                        e_ids.append(str(emoji.id))
-                    else:
-                        e_ids.append(emoji)
                     role = await commands.RoleConverter().convert(ctx, role)
                 except Exception as e:
                     await msg.add_reaction('\N{CROSS MARK}')
                     await ctx.send(f'{"Role"if isinstance(e, commands.RoleNotFound) else "Emoji"} not found')
                     continue
 
-                if emoji in emoji_roles.keys() or role.id in emoji_roles.values():
+                if emoji in emojis.keys() or role.id in role_ids:
                     await msg.add_reaction('\N{BLACK QUESTION MARK ORNAMENT}')
                     await ctx.send(f'{emoji} and/or {role.mention} is already bound')
                     continue
 
                 desc_lst.append(f'{emoji} {role.mention} {f"- {desc}" if desc else ""}')
-                emoji_roles.update({emoji:role.id})
+                emojis.update({ emoji : emoji if is_emoji(emoji) else str(emoji.id)})
+                role_ids.append(role.id)
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
 
         except asyncio.TimeoutError:
@@ -134,7 +127,7 @@ class ReactionRole(commands.Cog):
             logger.info("[ReactionRole reactRole()] Caller involked exit. Process terminated.")
             return
 
-        # make and send the reaction role
+        # Create, send react message, and add reactions
         rr_embed = await embed(
             ctx,
             title=title,
@@ -143,22 +136,14 @@ class ReactionRole(commands.Cog):
         )
         if not rr_embed: return
 
-        # send the react msg
         react_msg = await channel.send(embed=rr_embed)
-
-        # add reactions to message
-        for emoji in emoji_roles.keys():
+        for emoji in emojis.keys():
             await react_msg.add_reaction(emoji)
 
-        # send link to caller
-        await ctx.send(f'Done\nHere\'s your reaction role message: {react_msg.jump_url}')
-
-        emoji_roles = dict(zip(e_ids, emoji_roles.values()))
-
-        # update local react watch list
+        # Update local and database
+        emoji_roles = dict(zip(emojis.values(), role_ids))
         self.react_msgs.update({react_msg.id : emoji_roles})
 
-        # update database
         rr = ReactRoles(
             message_id=react_msg.id,
             channel_id=channel.id,
@@ -169,8 +154,10 @@ class ReactionRole(commands.Cog):
         )
         await ReactRoles.insert(rr)
 
+        # Send rr link to user
+        await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
 
-    @commands.Cog.listener() # TODO: emoji payload can be 1 line with ternery op on emoji.id
+    @commands.Cog.listener()
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         # checks for user reactions and if they're using a reaction message
         if self.bot.user.id == payload.user_id: return
