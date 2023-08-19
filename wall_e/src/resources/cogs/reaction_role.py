@@ -18,6 +18,7 @@ class ReactionRole(commands.Cog):
 
     def __init__(self, bot: discord.Client, config):
         self.bot = bot
+        self.config = config
         emoji_file = open('resources/locales/emoji-compact.json')
         self.emojis = json.load(emoji_file)
         emoji_file.close()
@@ -32,8 +33,11 @@ class ReactionRole(commands.Cog):
                              "**Example**:\n:smiling_imp:, @Froshee\n :snake:, @Tab-Life, React for **python** gang")
 
     @commands.Cog.listener(name='on_ready')
-    async def load_from_db(self):
-        logger.info('[ReactionRole load_from_db()] loading react role messages')
+    async def load(self):
+        mod_channel_name = self.config.get_config_value('basic_config', 'MOD_CHANNEL')
+        self.mod_channel = discord.utils.get(self.bot.guilds[0].channels, name=mod_channel_name)
+        logger.info('[ReactionRole load()] mod channel loaded')
+        logger.info('[ReactionRole load()] loading react role messages')
         react_roles = await ReactRoles.get_all_react_roles()
 
         for react_role in react_roles:
@@ -178,7 +182,8 @@ class ReactionRole(commands.Cog):
             except KeyError:
                 return
             except discord.Forbidden:
-                logger.info("[ReactionRole on_raw_reaction_add()] @Minions I don't have role management perms.")
+                await self.mod_channel.send("I don't have role management permission? Figure it out.")
+                logger.info("[ReactionRole on_raw_reaction_remove()] Permissions error. Mods notified.")
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -198,7 +203,8 @@ class ReactionRole(commands.Cog):
             except KeyError:
                 return
             except discord.Forbidden:
-                logger.info("[ReactionRole on_raw_reaction_remove()] @Minions I don't have role management perms.")
+                await self.mod_channel.send("I don't have role management permission? Figure it out.")
+                logger.info("[ReactionRole on_raw_reaction_remove()] Permissions error. Mods notified.")
 
     # @tasks.loop(hours=24.0)
     # async def cleanup():
