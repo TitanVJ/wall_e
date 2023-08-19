@@ -33,13 +33,12 @@ class ReactionRole(commands.Cog):
 
     @commands.Cog.listener(name='on_ready')
     async def load_from_db(self):
-        print('loading react messages')
+        logger.info('[ReactionRole load_from_db()] loading react role messages')
         react_roles = await ReactRoles.get_all_react_roles()
 
         for react_role in react_roles:
-            print(f'\tloading: {react_role}')
             self.react_msgs.update( { react_role[0]: json.loads(react_role[1]) } )
-        print(self.react_msgs)
+        logger.info(f'[ReactionRole load_from_db()] done loading. {len(react_role)} messages loaded.')
 
     def check(self, author: discord.user, channel: discord.channel):
         return lambda m: m.author == author and m.channel == channel
@@ -119,9 +118,11 @@ class ReactionRole(commands.Cog):
                 emojis.update({ emoji : emoji if is_emoji(emoji) else str(emoji.id)})
                 role_ids.append(role.id)
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
+                logger.info(f'[ReactionRole reactRole()] emoji role pair added: {emoji} - {role}')
 
         except asyncio.TimeoutError:
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
+            logger.info("[ReactionRole reactRole()] Timeout. Process terminated.")
             return
         except Exception:
             logger.info("[ReactionRole reactRole()] Caller involked exit. Process terminated.")
@@ -139,6 +140,7 @@ class ReactionRole(commands.Cog):
         react_msg = await channel.send(embed=rr_embed)
         for emoji in emojis.keys():
             await react_msg.add_reaction(emoji)
+        logger.info("[ReactionRole reactRole()] React role message created and sent.")
 
         # Update local and database
         emoji_roles = dict(zip(emojis.values(), role_ids))
@@ -153,6 +155,7 @@ class ReactionRole(commands.Cog):
             created_on=datetime.datetime.now(pytz.utc).timestamp()
         )
         await ReactRoles.insert(rr)
+        logger.info("[ReactionRole reactRole()] Database and local watchlist updated with react role.")
 
         # Send rr link to user
         await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
@@ -161,10 +164,8 @@ class ReactionRole(commands.Cog):
     async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
         # checks for user reactions and if they're using a reaction message
         if self.bot.user.id == payload.user_id: return
-        print(f"payload emoji: {payload.emoji}", f"emoji id: {payload.emoji.id}", f"emoji name: {payload.emoji.name}")
-        print(f"emoji id type: {type(payload.emoji.id)}")
         msg = payload.message_id
-        print(self.react_msgs[msg])
+
         if msg in self.react_msgs:
             guild = self.bot.get_guild(payload.guild_id)
             user = payload.member
@@ -175,7 +176,6 @@ class ReactionRole(commands.Cog):
                 role: discord.Role = discord.utils.get(guild.roles, id=role_id)
                 await user.add_roles(role)
             except KeyError:
-                print('non binding emoji')
                 return
             except discord.Forbidden:
                 logger.info("[ReactionRole on_raw_reaction_add()] @Minions I don't have role management perms.")
@@ -184,21 +184,18 @@ class ReactionRole(commands.Cog):
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
         # removes roles on unreacting on a reaction message
         if self.bot.user.id == payload.user_id: return
-        print(payload)
-
         msg = payload.message_id
+
         if msg in self.react_msgs:
             guild = self.bot.get_guild(payload.guild_id)
             user = guild.get_member(payload.user_id)
             emoji = payload.emoji
             emoji = str(emoji.id) if emoji.id else emoji.name
-            print(user)
             try:
                 role_id = self.react_msgs[msg][emoji]
                 role: discord.Role = discord.utils.get(guild.roles, id=role_id)
                 await user.remove_roles(role)
             except KeyError:
-                print('non binding emoji')
                 return
             except discord.Forbidden:
                 logger.info("[ReactionRole on_raw_reaction_remove()] @Minions I don't have role management perms.")
