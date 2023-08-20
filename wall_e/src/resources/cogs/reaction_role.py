@@ -42,7 +42,7 @@ class ReactionRole(commands.Cog):
 
         for react_role in react_roles:
             self.react_msgs.update( { react_role[0]: json.loads(react_role[1]) } )
-        logger.info(f'[ReactionRole load_from_db()] done loading. {len(react_role)} messages loaded.')
+        logger.info(f'[ReactionRole load_from_db()] done loading. {len(react_roles)} messages loaded.')
 
     async def request(self, ctx, prompt='', case_s=False, converter=None, timeout=60.0):
         def check(author: discord.user, channel: discord.channel):
