@@ -108,7 +108,6 @@ class ReactionRole(commands.Cog):
                 erd = list(map(lambda s: s.strip(), content.split(',')))
                 emoji, role = erd[0], erd[1]
                 desc = None if len(erd) < 3 else erd[2]
-                print(f'e:{emoji} r:{role} d:{desc}')
                 try:
                     if not is_emoji(emoji):
                         emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
@@ -190,11 +189,12 @@ class ReactionRole(commands.Cog):
                 role_id = self.react_msgs[msg][emoji]
                 role: discord.Role = discord.utils.get(guild.roles, id=role_id)
                 await user.add_roles(role)
+                logger.info("[ReactionRole on_raw_reaction_add()] role {role} given to {user} via react")
             except KeyError:
                 return
             except discord.Forbidden:
                 await self.mod_channel.send("I don't have role management permission? Figure it out.")
-                logger.info("[ReactionRole on_raw_reaction_remove()] Permissions error. Mods notified.")
+                logger.info("[ReactionRole on_raw_reaction_add()] Permissions error. Mods notified.")
 
     @commands.Cog.listener()
     async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
@@ -211,6 +211,7 @@ class ReactionRole(commands.Cog):
                 role_id = self.react_msgs[msg][emoji]
                 role: discord.Role = discord.utils.get(guild.roles, id=role_id)
                 await user.remove_roles(role)
+                logger.info("[ReactionRole on_raw_reaction_remove()] role {role} removed from {user} via react")
             except KeyError:
                 return
             except discord.Forbidden:
