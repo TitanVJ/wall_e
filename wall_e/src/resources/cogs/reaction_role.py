@@ -44,11 +44,10 @@ class ReactionRole(commands.Cog):
             self.react_msgs.update( { react_role[0]: json.loads(react_role[1]) } )
         logger.info(f'[ReactionRole load_from_db()] done loading. {len(react_role)} messages loaded.')
 
-    def check(self, author: discord.user, channel: discord.channel):
-        return lambda m: m.author == author and m.channel == channel
-
     async def request(self, ctx, prompt='', case_s=False, converter=None, timeout=60.0):
-        input_check = self.check(ctx.author, ctx.channel)
+        def check(author: discord.user, channel: discord.channel):
+            return lambda m: m.author == author and m.channel == channel
+        input_check = check(ctx.author, ctx.channel)
 
         if prompt: await ctx.send(prompt)
         msg = await self.bot.wait_for('message', check=input_check, timeout=timeout)
