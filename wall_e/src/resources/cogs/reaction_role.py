@@ -65,7 +65,7 @@ class ReactionRole(commands.Cog):
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx):
-        logger.info("[ReactionRole reactRole()] starting interactive process to create react role embed")
+        logger.info("[ReactionRole reactrole()] starting interactive process to create react role embed")
 
         await ctx.send("## To terminate process at any point type `exit`")
         try:
@@ -73,8 +73,13 @@ class ReactionRole(commands.Cog):
             channel, _ = await self.request(ctx, self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
             if not channel:
                 await ctx.send(f'Channel not found. Redo command to try again.')
-                logger.info(f'[ReactionRole reactrole()] channel not found. Command exection terminated.')
+                logger.info('[ReactionRole reactrole()] channel not found. Command terminated.')
                 return
+            if not self.bot.guilds[0].me.permissions_in(channel).send_messages:
+                await ctx.send(f'I do not have send permission in {channel.mention}. Command terminated.')
+                logger.info(f'[ReactionRole reactrole()] No send permission in {channel}. Command terminated')
+                return
+
             logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
 
             # Get title for
@@ -122,14 +127,14 @@ class ReactionRole(commands.Cog):
                 emojis.update({ emoji : emoji if is_emoji(emoji) else str(emoji.id)})
                 role_ids.append(role.id)
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
-                logger.info(f'[ReactionRole reactRole()] emoji role pair added: {emoji} - {role}')
+                logger.info(f'[ReactionRole reactrole()] emoji role pair added: {emoji} - {role}')
 
         except asyncio.TimeoutError:
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
-            logger.info("[ReactionRole reactRole()] Timeout. Process terminated.")
+            logger.info("[ReactionRole reactrole()] Timeout. Process terminated.")
             return
         except Exception:
-            logger.info("[ReactionRole reactRole()] Caller involked exit. Process terminated.")
+            logger.info("[ReactionRole reactrole()] Caller involked exit. Process terminated.")
             return
 
         # Create, send react message, and add reactions
@@ -144,7 +149,7 @@ class ReactionRole(commands.Cog):
         react_msg = await channel.send(embed=rr_embed)
         for emoji in emojis.keys():
             await react_msg.add_reaction(emoji)
-        logger.info("[ReactionRole reactRole()] React role message created and sent.")
+        logger.info("[ReactionRole reactrole()] React role message created and sent.")
 
         # Update local and database
         emoji_roles = dict(zip(emojis.values(), role_ids))
@@ -159,7 +164,7 @@ class ReactionRole(commands.Cog):
             created_on=datetime.datetime.now(pytz.utc).timestamp()
         )
         await ReactRoles.insert(rr)
-        logger.info("[ReactionRole reactRole()] Database and local watchlist updated with react role.")
+        logger.info("[ReactionRole reactrole()] Database and local watchlist updated with react role.")
 
         # Send rr link to user
         await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
