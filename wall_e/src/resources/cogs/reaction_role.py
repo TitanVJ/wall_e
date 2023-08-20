@@ -13,6 +13,7 @@ import json
 from emoji import is_emoji
 logger = logging.getLogger('wall_e')
 
+
 class ExitException(Exception):
     """Better semantics using this class for user exit."""
     pass
@@ -129,7 +130,6 @@ class ReactionRole(commands.Cog):
                 role_ids.append(role.id)
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
                 logger.info(f'[ReactionRole reactrole()] emoji role pair added: {emoji} - {role}')
-
         except asyncio.TimeoutError:
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
             logger.info("[ReactionRole reactrole()] Timeout. Process terminated.")
@@ -179,49 +179,37 @@ class ReactionRole(commands.Cog):
         # Send rr link to user
         await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
 
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
-        # checks for user reactions and if they're using a reaction message
+    @commands.Cog.listener(name='on_raw_reaction_add')
+    @commands.Cog.listener(name='on_raw_reaction_remove')
+    async def react(self, payload: discord.RawReactionActionEvent):
         if self.bot.user.id == payload.user_id: return
         msg = payload.message_id
+        user = None
+        action = None
+        action_str = ''
+        guild = self.bot.get_guild(payload.guild_id)
+        emoji = payload.emoji
+        emoji = str(emoji.id) if emoji.id else emoji.name
 
-        if msg in self.react_msgs:
-            guild = self.bot.get_guild(payload.guild_id)
+        if payload.event_type == 'REACTION_ADD':
             user = payload.member
-            emoji = payload.emoji
-            emoji = str(emoji.id) if emoji.id else emoji.name
-            try:
-                role_id = self.react_msgs[msg][emoji]
-                role: discord.Role = discord.utils.get(guild.roles, id=role_id)
-                await user.add_roles(role)
-                logger.info("[ReactionRole on_raw_reaction_add()] role {role} given to {user} via react")
-            except KeyError:
-                return
-            except discord.Forbidden:
-                await self.mod_channel.send("I don't have role management permission? Figure it out.")
-                logger.info("[ReactionRole on_raw_reaction_add()] Permissions error. Mods notified.")
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, payload: discord.RawReactionActionEvent):
-        # removes roles on unreacting on a reaction message
-        if self.bot.user.id == payload.user_id: return
-        msg = payload.message_id
-
-        if msg in self.react_msgs:
-            guild = self.bot.get_guild(payload.guild_id)
+            action = user.add_roles
+            action_str = 'given to'
+        else:
             user = guild.get_member(payload.user_id)
-            emoji = payload.emoji
-            emoji = str(emoji.id) if emoji.id else emoji.name
-            try:
-                role_id = self.react_msgs[msg][emoji]
-                role: discord.Role = discord.utils.get(guild.roles, id=role_id)
-                await user.remove_roles(role)
-                logger.info("[ReactionRole on_raw_reaction_remove()] role {role} removed from {user} via react")
-            except KeyError:
-                return
-            except discord.Forbidden:
-                await self.mod_channel.send("I don't have role management permission? Figure it out.")
-                logger.info("[ReactionRole on_raw_reaction_remove()] Permissions error. Mods notified.")
+            action = user.remove_roles
+            action_str = 'removed from'
+
+        try:
+            role_id = self.react_msgs[msg][emoji]
+            role: discord.Role = discord.utils.get(guild.roles, id=role_id)
+            await action(role)
+            logger.info(f"[ReactionRole on_raw_reaction_add()] role @{role} {action_str} {user} via react")
+        except KeyError:
+            return
+        except discord.Forbidden:
+            await self.mod_channel.send("I don't have role management permission? Figure it out.")
+            logger.info("[ReactionRole react()] Permissions error. Mods notified.")
 
     # @tasks.loop(hours=24.0)
     # async def cleanup():
