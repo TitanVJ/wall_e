@@ -13,6 +13,9 @@ import json
 from emoji import is_emoji
 logger = logging.getLogger('wall_e')
 
+class ExitException(Exception):
+    """Better semantics using this class for user exit."""
+    pass
 
 class ReactionRole(commands.Cog):
 
@@ -52,7 +55,7 @@ class ReactionRole(commands.Cog):
         if prompt: await ctx.send(prompt)
         msg = await self.bot.wait_for('message', check=input_check, timeout=timeout)
         ret = msg.content
-        if ret.lower() == 'exit': raise Exception
+        if ret.lower() == 'exit': raise ExitException
         if not case_s: ret = ret.lower()
 
         if converter:
@@ -131,8 +134,11 @@ class ReactionRole(commands.Cog):
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
             logger.info("[ReactionRole reactrole()] Timeout. Process terminated.")
             return
-        except Exception:
+        except ExitException:
             logger.info("[ReactionRole reactrole()] Caller involked exit. Process terminated.")
+            return
+        except Exception as e:
+            logger.info("[ReactionRole reactrole()] Unknown exception: {e}")
             return
 
         # Create, send react message, and add reactions
