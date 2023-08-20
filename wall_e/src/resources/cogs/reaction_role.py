@@ -166,6 +166,12 @@ class ReactionRole(commands.Cog):
         await ReactRoles.insert(rr)
         logger.info("[ReactionRole reactrole()] Database and local watchlist updated with react role.")
 
+        # Clean up
+        def check(msg: discord.Message):
+            return msg.author in [ctx.author, self.bot.user] and msg.created_at >= ctx.message.created_at
+        await ctx.channel.purge(check=check)
+        logger.info("[ReactionRole reactrole()] purged all message part of the creation process")
+
         # Send rr link to user
         await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
 
