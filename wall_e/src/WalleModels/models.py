@@ -16,11 +16,14 @@ logger = logging.getLogger('wall_e')
 class ReactRoles(models.Model):
     # TODO: clean up and update this model
 
-    react_role_id = models.BigAutoField(primary_key=True)
+    react_role_id = GeneratedIdentityField(primary_key=True)
     message_id = models.BigIntegerField(null=False, unique=True)
     channel_id = models.BigIntegerField(null=False)
-    emoji_role_binding = models.TextField(null=False) # will store the json string
-    author_name = models.CharField(max_length=32, null=False)
+    title = models.TextField(null=False)
+    colour = models.CharField(max_length=6, null=False)
+    emoji_roles = models.TextField(null=False)
+    descriptions = models.TextField(null=False)
+    author = models.CharField(max_length=37, null=False)
     author_id = models.BigIntegerField(null=False)
     created_on = models.BigIntegerField(null=False)
 
@@ -37,7 +40,7 @@ class ReactRoles(models.Model):
     def get_all_react_roles(cls):
         """Returns list of all react role message id's and thier emoji-role bindings"""
 
-        return list((ReactRoles.objects.values_list('message_id', 'emoji_role_binding')))
+        return list((ReactRoles.objects.values_list('message_id', 'emoji_roles')))
 
     @classmethod
     @sync_to_async
