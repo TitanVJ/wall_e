@@ -101,7 +101,8 @@ class ReactionRole(commands.Cog):
 
             emojis = {}
             role_ids = []
-            desc_lst = []
+            em_desc = []
+            descs = []
             while True:
                 content, msg = await self.request(ctx, case_s=True)
                 if content == 'done': break
@@ -124,7 +125,8 @@ class ReactionRole(commands.Cog):
                     await ctx.send(f'{emoji} and/or {role.mention} is already bound')
                     continue
 
-                desc_lst.append(f'{emoji} {role.mention} {f"- {desc}" if desc else ""}')
+                em_desc.append(f'{emoji} {role.mention} {f"- {desc}" if desc else ""}')
+                descs.append(desc if desc else "")
                 emojis.update({ emoji : emoji if is_emoji(emoji) else str(emoji.id)})
                 role_ids.append(role.id)
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
@@ -145,7 +147,7 @@ class ReactionRole(commands.Cog):
             ctx,
             title=title,
             colour=colour,
-            description='\n'.join(desc_lst)
+            description='\n'.join(em_desc)
         )
         if not rr_embed: return
 
@@ -161,9 +163,12 @@ class ReactionRole(commands.Cog):
         rr = ReactRoles(
             message_id=react_msg.id,
             channel_id=channel.id,
-            emoji_role_binding=json.dumps(emoji_roles),
+            title=title,
+            colour=f"{colour.value:x}",
+            emoji_roles=json.dumps(emoji_roles),
+            descriptions=json.dumps(descs),
+            author=ctx.author.name+'#'+ctx.author.discriminator,
             author_id=ctx.author.id,
-            author_name=ctx.author.name+'#'+ctx.author.discriminator,
             created_on=datetime.datetime.now(pytz.utc).timestamp()
         )
         await ReactRoles.insert(rr)
@@ -189,7 +194,7 @@ class ReactionRole(commands.Cog):
             await ctx.send(err)
             return
 
-        cmd = cmd.lower()
+        cmd = cmd[0].lower()
         if cmd in ['make', 'create']:
             logger.info("[ReactionRole reactrole()] make")
             await self.make(ctx)
