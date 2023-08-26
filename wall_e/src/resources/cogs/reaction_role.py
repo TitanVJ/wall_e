@@ -66,9 +66,8 @@ class ReactionRole(commands.Cog):
                 return None, msg
         return ret, msg
 
-    @commands.command(aliases=['rr'])
-    async def reactrole(self, ctx):
-        logger.info("[ReactionRole reactrole()] starting interactive process to create react role embed")
+    async def make(self, ctx):
+        logger.info("[ReactionRole make()] starting interactive process to create react role embed")
 
         await ctx.send("## To terminate process at any point type `exit`")
         try:
@@ -76,24 +75,24 @@ class ReactionRole(commands.Cog):
             channel, _ = await self.request(ctx, self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
             if not channel:
                 await ctx.send(f'Channel not found. Redo command to try again.')
-                logger.info('[ReactionRole reactrole()] channel not found. Command terminated.')
+                logger.info('[ReactionRole make()] channel not found. Command terminated.')
                 return
             if not self.bot.guilds[0].me.permissions_in(channel).send_messages:
                 await ctx.send(f'I do not have send permission in {channel.mention}. Command terminated.')
-                logger.info(f'[ReactionRole reactrole()] No send permission in {channel}. Command terminated')
+                logger.info(f'[ReactionRole make()] No send permission in {channel}. Command terminated')
                 return
 
-            logger.info(f'[ReactionRole reactrole()] channel to send react role confirmed: {channel}')
+            logger.info(f'[ReactionRole make()] channel to send react role confirmed: {channel}')
 
             # Get title for
             title, _ = await self.request(ctx, self.TITLE_PROMPT, case_s=True)
-            logger.info(f'[ReactionRole reactrole()] react role title set to: {title}')
+            logger.info(f'[ReactionRole make()] react role title set to: {title}')
 
             # Get colour
             colour, _ = await self.request(ctx, self.COLOUR_PROMPT, converter=commands.ColourConverter(), timeout=120)
             if not colour:
                 colour = discord.Color.blurple()
-            logger.info(f'[ReactionRole reactrole()] react role colour is: {colour}')
+            logger.info(f'[ReactionRole make()] react role colour is: {colour}')
             await ctx.send('Using default colour:' if colour==discord.Color.blurple() else 'Colour set to:')
             await ctx.send(f'https://singlecolorimage.com/get/{colour.value:x}/50x50')
 
@@ -129,16 +128,16 @@ class ReactionRole(commands.Cog):
                 emojis.update({ emoji : emoji if is_emoji(emoji) else str(emoji.id)})
                 role_ids.append(role.id)
                 await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
-                logger.info(f'[ReactionRole reactrole()] emoji role pair added: {emoji} - {role}')
+                logger.info(f'[ReactionRole make()] emoji role pair added: {emoji} - {role}')
         except asyncio.TimeoutError:
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
-            logger.info("[ReactionRole reactrole()] Timeout. Process terminated.")
+            logger.info("[ReactionRole make()] Timeout. Process terminated.")
             return
         except ExitException:
-            logger.info("[ReactionRole reactrole()] Caller involked exit. Process terminated.")
+            logger.info("[ReactionRole make()] Caller involked exit. Process terminated.")
             return
         except Exception as e:
-            logger.info("[ReactionRole reactrole()] Unknown exception: {e}")
+            logger.info("[ReactionRole make()] Unknown exception: {e}")
             return
 
         # Create, send react message, and add reactions
@@ -153,7 +152,7 @@ class ReactionRole(commands.Cog):
         react_msg = await channel.send(embed=rr_embed)
         for emoji in emojis.keys():
             await react_msg.add_reaction(emoji)
-        logger.info("[ReactionRole reactrole()] React role message created and sent.")
+        logger.info("[ReactionRole make()] React role message created and sent.")
 
         # Update local and database
         emoji_roles = dict(zip(emojis.values(), role_ids))
@@ -168,16 +167,32 @@ class ReactionRole(commands.Cog):
             created_on=datetime.datetime.now(pytz.utc).timestamp()
         )
         await ReactRoles.insert(rr)
-        logger.info("[ReactionRole reactrole()] Database and local watchlist updated with react role.")
+        logger.info("[ReactionRole make()] Database and local watchlist updated with react role.")
 
         # Clean up
         def check(msg: discord.Message):
             return msg.author in [ctx.author, self.bot.user] and msg.created_at >= ctx.message.created_at
         await ctx.channel.purge(check=check)
-        logger.info("[ReactionRole reactrole()] purged all message part of the creation process")
+        logger.info("[ReactionRole make()] purged all message part of the creation process")
 
         # Send rr link to user
         await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
+
+    @commands.command(aliases=['rr'])
+    async def reactrole(self, ctx, *cmd):
+        if not cmd:
+            err = ("## Error \N{LARGE RED CIRCLE}\nUsage: `.rr/reactrole <cmd>`\n### Commands:\n"
+                   "- `make/create`: Create new react message\n"
+                   "- `list`: List all react messages\n"
+                   "- `add message_id`: Add emoji-role pair to existing react message w/ id=`message_id`\n"
+                   "- `remove message_id`: Remove emoji-role pair from existing react message w/ id=`message_id`")
+            await ctx.send(err)
+            return
+
+        cmd = cmd.lower()
+        if cmd in ['make', 'create']:
+            logger.info("[ReactionRole reactrole()] make")
+            await self.make(ctx)
 
     @commands.Cog.listener(name='on_raw_reaction_add')
     @commands.Cog.listener(name='on_raw_reaction_remove')
