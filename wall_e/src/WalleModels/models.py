@@ -48,6 +48,13 @@ class ReactRoles(models.Model):
 
     @classmethod
     @sync_to_async
+    def get_all_message_ids(cls):
+        """Returns list of all react role message ids, channel ids, and titles"""
+
+        return list(ReactRoles.objects.values_list('message_id', 'channel_id', 'title'))
+
+    @classmethod
+    @sync_to_async
     def del_record_by_id(cls, id: int):
         obj = ReactRoles.objects.filter(message_id=id)
         obj.delete()
