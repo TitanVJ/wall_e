@@ -183,21 +183,47 @@ class ReactionRole(commands.Cog):
         # Send rr link to user
         await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
 
+    async def list_react_messages(self, ctx):
+        """Gives list of links to all react roles"""
+
+        msgs = await ReactRoles.get_all_message_ids()
+        logger.info(f"[ReactionRole list_react_messages()] {len(msgs)} react role messages")
+
+        await ctx.send(f"## Number of react roles: {len(msgs)}")
+        if not msgs: return
+        else:
+            await ctx.send("### Message Title - *Link*", delete_after=20)
+
+        logger.info(f"[ReactionRole list_react_messages()] sending links to messages: {msgs}")
+        for msg in msgs:
+            title = msg[2]
+            try:
+                ch = ctx.guild.get_channel(msg[1])
+                msg = await ch.fetch_message(msg[0])
+                await ctx.send(f"{title} - {msg.jump_url}", delete_after=20)
+            except Exception as e:
+                logger.info(f"[ReactionRole list_react_messages()] Encountered following error: {e}")
+                return
+
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx, *cmd):
         if not cmd:
             err = ("## Error \N{LARGE RED CIRCLE}\nUsage: `.rr/reactrole <cmd>`\n### Commands:\n"
-                   "- `make/create`: Create new react message\n"
-                   "- `list`: List all react messages\n"
-                   "- `add message_id`: Add emoji-role pair to existing react message w/ id=`message_id`\n"
-                   "- `remove message_id`: Remove emoji-role pair from existing react message w/ id=`message_id`")
+                    "- `make/create`: Create new react message\n"
+                    "- `list`: List all react messages\n"
+                    "- `add message_id`: Add emoji-role pair to existing react message w/ id=`message_id`\n"
+                    "- `remove message_id`: Remove emoji-role pair from existing react message w/ id=`message_id`")
             await ctx.send(err)
             return
 
         cmd = cmd[0].lower()
+        logger.info(f"[ReactionRole reactrole()] Reactrole called with subcommand: {cmd}")
         if cmd in ['make', 'create']:
             logger.info("[ReactionRole reactrole()] make")
             await self.make(ctx)
+        elif cmd == 'list':
+            logger.info("[ReactionRole reactrole()] list")
+            await self.list_react_messages(ctx)
 
     @commands.Cog.listener(name='on_raw_reaction_add')
     @commands.Cog.listener(name='on_raw_reaction_remove')
