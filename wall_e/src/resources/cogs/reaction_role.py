@@ -205,15 +205,36 @@ class ReactionRole(commands.Cog):
                 logger.info(f"[ReactionRole list_react_messages()] Encountered following error: {e}")
                 return
 
+    async def rr_help(self, ctx):
+        """Sends help message for react role command"""
+
+        desc = [
+            ('Commands:', ''),
+            ('make/create', 'Creates new react message'),
+            ('list', 'List of all react messages'),
+            ('add `message_id`', 'Add emoji-role pair to existing react message with id=`message_id`'),
+            ('remove `message_id`', 'Remove emoji-role pair from existing react message with id=`message_id`'),
+            ('How to get message_id',('[Discord Link]('
+             'https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-)'))
+        ]
+        em = await embed(
+            ctx=ctx,
+            title='Error',
+            content=desc,
+            description='Usage: .rr/reactrole `cmd`',
+            colour=discord.Colour.red()
+        )
+        if not em:
+            return
+
+        logger.info("[ReactionRole rr_help()] Sending react role help message")
+        await ctx.send(embed=em, delete_after=20)
+
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx, *cmd):
         if not cmd:
-            err = ("## Error \N{LARGE RED CIRCLE}\nUsage: `.rr/reactrole <cmd>`\n### Commands:\n"
-                    "- `make/create`: Create new react message\n"
-                    "- `list`: List all react messages\n"
-                    "- `add message_id`: Add emoji-role pair to existing react message w/ id=`message_id`\n"
-                    "- `remove message_id`: Remove emoji-role pair from existing react message w/ id=`message_id`")
-            await ctx.send(err)
+            logger.info("[ReactionRole reactrole()] No subcommand given")
+            await self.rr_help(ctx)
             return
 
         cmd = cmd[0].lower()
@@ -224,6 +245,9 @@ class ReactionRole(commands.Cog):
         elif cmd == 'list':
             logger.info("[ReactionRole reactrole()] list")
             await self.list_react_messages(ctx)
+        else:
+            logger.info("[ReactionRole reactrole()] Unknown subcommand")
+            await self.rr_help(ctx)
 
     @commands.Cog.listener(name='on_raw_reaction_add')
     @commands.Cog.listener(name='on_raw_reaction_remove')
