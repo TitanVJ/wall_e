@@ -305,6 +305,7 @@ class ReactionRole(commands.Cog):
         self.react_msgs[message_id] = emoji_roles
 
         react_role.emoji_roles = json.dumps(emoji_roles)
+        react_role.descriptions = json.dumps(descs)
         await ReactRoles.insert(react_role)
 
         # Clean up and send link to user
