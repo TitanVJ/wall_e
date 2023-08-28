@@ -94,6 +94,15 @@ class ReactionRole(commands.Cog):
         await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
         return [emoji, role, desc]
 
+    async def clean(self, ctx):
+        """Purges all messages from ctx.author and the bot related to command usage"""
+
+        def check(msg: discord.Message):
+            return msg.author in [ctx.author, self.bot.user] and msg.created_at >= ctx.message.created_at
+
+        await ctx.channel.purge(check=check)
+        logger.info("[ReactionRole clean()] purged all message part of the creation process")
+
     async def rr_help(self, ctx):
         """Sends help message for react role command"""
 
@@ -211,10 +220,7 @@ class ReactionRole(commands.Cog):
         logger.info("[ReactionRole make()] Database and local watchlist updated with react role.")
 
         # Clean up
-        def check(msg: discord.Message):
-            return msg.author in [ctx.author, self.bot.user] and msg.created_at >= ctx.message.created_at
-        await ctx.channel.purge(check=check)
-        logger.info("[ReactionRole make()] purged all message part of the creation process")
+        await self.clean(ctx)
 
         # Send rr link to user
         await ctx.send(f'Here\'s your reaction role message: {react_msg.jump_url}')
@@ -301,8 +307,9 @@ class ReactionRole(commands.Cog):
         react_role.emoji_roles = json.dumps(emoji_roles)
         await ReactRoles.insert(react_role)
 
-        # Done
-        await ctx.send(f"Done. Heres a link to the updated react role {message.jump_url}")
+        # Clean up and send link to user
+        await self.clean(ctx)
+        await ctx.send(f"Updated: {message.jump_url}")
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx, *sub_cmd):
@@ -322,7 +329,6 @@ class ReactionRole(commands.Cog):
         elif len(sub_cmd) >= 2:
             if cmd == 'add':
                 await self.add(ctx, sub_cmd[1])
-
         else:
             logger.info("[ReactionRole reactrole()] Unknown subcommand")
             await self.rr_help(ctx)
