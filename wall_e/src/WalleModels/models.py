@@ -62,8 +62,8 @@ class ReactRoles(models.Model):
     def __str__(self) -> str:
         return (
             f"<ReactRole react_role_id={self.react_role_id} message_id={self.message_id} channel_id={self.channel_id}"
-            f"title={self.title} colour={self.colour} emoji_roles={self.emoji_roles} descriptions={self.descriptions}"
-            f"author={self.author} author_id={self.author_id} created_on={self.created_on}>"
+            f" title={self.title} colour={self.colour} emoji_roles={self.emoji_roles} descriptions={self.descriptions}"
+            f" author={self.author} author_id={self.author_id} created_on={self.created_on}>"
         )
 
 
