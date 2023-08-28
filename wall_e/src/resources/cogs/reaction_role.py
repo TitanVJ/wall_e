@@ -31,10 +31,10 @@ class ReactionRole(commands.Cog):
         self.TITLE_PROMPT = "## Provide a title for the message. You can use Discord markup in the title."
         self.COLOUR_PROMPT = ("## Enter a colour for the embed in hex format. Enter `none` to use default colour.\n"
                               "**Need helping picking a color?** Check out: <https://htmlcolorcodes.com/>")
-        self.ROLES_PROMPT = ("## Add emojis and roles one at a time, when done type `done`.\n"
-                             "Enter in this format:\n```emoji, @role, optional description```"
-                             "Comma seperate the args. Description can include Discord markup.\n"
-                             "**Example**:\n:smiling_imp:, @Froshee\n :snake:, @Tab-Life, React for **python** gang")
+        self.ROLE_PROMPT = ("Enter in this format:\n```emoji, @role, optional description```"
+                          "Comma seperate the args. Description can include Discord markup.\n"
+                          "**Example**:\n:smiling_imp:, @Froshee\n :snake:, @Tab-Life, React for **python** gang")
+        self.ROLES_PROMPT = (f"## Add emojis and roles one at a time, when done type `done`.\n{self.ROLE_PROMPT}")
 
     @commands.Cog.listener(name='on_ready')
     async def load(self):
@@ -65,6 +65,34 @@ class ReactionRole(commands.Cog):
             except Exception:
                 return None, msg
         return ret, msg
+
+    async def get_emoji_role(self, ctx, emoji_ids, role_ids):
+        """Requests and parses emoji - role pair from user"""
+
+        content, msg = await self.request(ctx, case_s=True)
+        if content == 'done': return 'done'
+
+        # parse message into parts
+        erd = list(map(lambda s: s.strip(), content.split(',')))
+        emoji, role = erd[0], erd[1]
+        desc = None if len(erd) < 3 else erd[2]
+        try:
+            if not is_emoji(emoji):
+                emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
+            role = await commands.RoleConverter().convert(ctx, role)
+        except Exception as e:
+            await msg.add_reaction('\N{CROSS MARK}')
+            await ctx.send(f'{"Role"if isinstance(e, commands.RoleNotFound) else "Emoji"} not found')
+            return None
+
+        emoji_id = emoji if is_emoji(emoji) else str(emoji.id)
+        if emoji_id in emoji_ids or role.id in role_ids:
+            await msg.add_reaction('\N{BLACK QUESTION MARK ORNAMENT}')
+            await ctx.send(f'{emoji} and/or {role.mention} is already bound')
+            return None
+
+        await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
+        return [emoji, role, desc]
 
     async def make(self, ctx):
         logger.info("[ReactionRole make()] starting interactive process to create react role embed")
@@ -104,32 +132,15 @@ class ReactionRole(commands.Cog):
             em_desc = []
             descs = []
             while True:
-                content, msg = await self.request(ctx, case_s=True)
-                if content == 'done': break
-
-                # parse message into parts
-                erd = list(map(lambda s: s.strip(), content.split(',')))
-                emoji, role = erd[0], erd[1]
-                desc = None if len(erd) < 3 else erd[2]
-                try:
-                    if not is_emoji(emoji):
-                        emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
-                    role = await commands.RoleConverter().convert(ctx, role)
-                except Exception as e:
-                    await msg.add_reaction('\N{CROSS MARK}')
-                    await ctx.send(f'{"Role"if isinstance(e, commands.RoleNotFound) else "Emoji"} not found')
-                    continue
-
-                if emoji in emojis.keys() or role.id in role_ids:
-                    await msg.add_reaction('\N{BLACK QUESTION MARK ORNAMENT}')
-                    await ctx.send(f'{emoji} and/or {role.mention} is already bound')
-                    continue
+                erd = await self.get_emoji_role(ctx, emojis.values(), role_ids)
+                if not erd: continue
+                elif erd == 'done': break
+                emoji, role, desc = erd
 
                 em_desc.append(f'{emoji} {role.mention} {f"- {desc}" if desc else ""}')
                 descs.append(desc if desc else "")
                 emojis.update({ emoji : emoji if is_emoji(emoji) else str(emoji.id)})
                 role_ids.append(role.id)
-                await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
                 logger.info(f'[ReactionRole make()] emoji role pair added: {emoji} - {role}')
         except asyncio.TimeoutError:
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
@@ -139,7 +150,7 @@ class ReactionRole(commands.Cog):
             logger.info("[ReactionRole make()] Caller involked exit. Process terminated.")
             return
         except Exception as e:
-            logger.info("[ReactionRole make()] Unknown exception: {e}")
+            logger.info(f"[ReactionRole make()] Unknown exception: {e}")
             return
 
         # Create, send react message, and add reactions
@@ -205,6 +216,69 @@ class ReactionRole(commands.Cog):
                 logger.info(f"[ReactionRole list_react_messages()] Encountered following error: {e}")
                 return
 
+    async def add(self, ctx, message_id):
+        """Adds emoji - role pair to existing react role message"""
+
+        logger.info(f"[ReactionRole add()] Retrieving react role with id={message_id}")
+        react_role: ReactRoles = await ReactRoles.get_react_role_by_id(message_id)
+        if not react_role:
+            logger.info("[ReactionRole add()] No react role message found")
+            await ctx.send(f"No react role message found w/ id=`{message_id}`")
+            return
+
+        logger.info(f"[ReactionRole add()] React role message found: {react_role}")
+        try:
+            channel = ctx.guild.get_channel(react_role.channel_id)
+            message: discord.Message = await channel.fetch_message(react_role.message_id)
+        except Exception as e:
+            logger.info(f"[ReactionRole add()] Encountered error: {e}")
+
+        msg_em: discord.Embed = message.embeds[0]
+        emoji_roles = json.loads(react_role.emoji_roles)
+        descs = json.loads(react_role.descriptions)
+
+        # Request emoji role pair to add
+        logger.info("[ReactionRole add()] Requesting new emoji role pair from user")
+        await ctx.send(self.ROLE_PROMPT)
+        try:
+            erd = await self.get_emoji_role(ctx, emoji_roles.keys(), emoji_roles.values())
+        except asyncio.TimeoutError:
+            await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
+            logger.info("[ReactionRole add()] Timeout. Process terminated.")
+            return
+
+        if not erd:
+            await ctx.send("Redo command. Bye \N{WAVING HAND SIGN}")
+            return
+        emoji, role, desc = erd
+        logger.info(f"[ReactionRole add()] New emoji role pair to add: {emoji} - {role}")
+
+        # Remove reactions not part of react role
+        reactions = message.reactions
+        for react in reactions:
+            emoji_id = react.emoji if is_emoji(react.emoji) else str(react.emoji.id)
+            if emoji_id not in emoji_roles.keys():
+                await message.clear_reaction(react.emoji)
+
+        # Edit embed and update message
+        msg_em.description = f'{msg_em.description}\n{emoji} {role.mention}{f" - {desc}" if desc else ""}'
+        await message.edit(embed=msg_em)
+
+        # Add new reaction to message
+        await message.add_reaction(emoji)
+
+        # Update local and database
+        emoji_roles.update({ emoji if is_emoji(emoji) else str(emoji.id) : role.id})
+        descs.append(desc)
+
+        self.react_msgs[message_id] = emoji_roles
+
+        react_role.emoji_roles = json.dumps(emoji_roles)
+        await ReactRoles.insert(react_role)
+
+        # Done
+        await ctx.send(f"Done. Heres a link to the updated react role {message.jump_url}")
+
     async def rr_help(self, ctx):
         """Sends help message for react role command"""
 
@@ -231,13 +305,13 @@ class ReactionRole(commands.Cog):
         await ctx.send(embed=em, delete_after=20)
 
     @commands.command(aliases=['rr'])
-    async def reactrole(self, ctx, *cmd):
-        if not cmd:
+    async def reactrole(self, ctx, *sub_cmd):
+        if not sub_cmd:
             logger.info("[ReactionRole reactrole()] No subcommand given")
             await self.rr_help(ctx)
             return
 
-        cmd = cmd[0].lower()
+        cmd = sub_cmd[0].lower()
         logger.info(f"[ReactionRole reactrole()] Reactrole called with subcommand: {cmd}")
         if cmd in ['make', 'create']:
             logger.info("[ReactionRole reactrole()] make")
@@ -245,6 +319,10 @@ class ReactionRole(commands.Cog):
         elif cmd == 'list':
             logger.info("[ReactionRole reactrole()] list")
             await self.list_react_messages(ctx)
+        elif len(sub_cmd) >= 2:
+            if cmd == 'add':
+                await self.add(ctx, sub_cmd[1])
+
         else:
             logger.info("[ReactionRole reactrole()] Unknown subcommand")
             await self.rr_help(ctx)

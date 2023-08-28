@@ -51,6 +51,15 @@ class ReactRoles(models.Model):
 
     @classmethod
     @sync_to_async
+    def get_react_role_by_id(cls, m_id):
+        """Retrieves react role by id"""
+        try:
+            return ReactRoles.objects.get(message_id=m_id)
+        except Exception:
+            return None
+
+    @classmethod
+    @sync_to_async
     def del_record_by_id(cls, id: int):
         obj = ReactRoles.objects.filter(message_id=id)
         obj.delete()
