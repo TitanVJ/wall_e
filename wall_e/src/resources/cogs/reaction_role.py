@@ -265,6 +265,7 @@ class ReactionRole(commands.Cog):
             logger.info(f"[ReactionRole add()] Encountered error: {e}")
 
         msg_em: discord.Embed = message.embeds[0]
+        logger.info(f"[ReactionRole add()] Message embed obtained: {msg_em.to_dict()}")
         emoji_roles = json.loads(react_role.emoji_roles)
         descs = json.loads(react_role.descriptions)
 
@@ -285,6 +286,7 @@ class ReactionRole(commands.Cog):
         logger.info(f"[ReactionRole add()] New emoji role pair to add: {emoji} - {role}")
 
         # Remove reactions not part of react role
+        logger.info("[ReactionRole add()] Clearing non irrelevant reactions from message")
         reactions = message.reactions
         for react in reactions:
             emoji_id = react.emoji if is_emoji(react.emoji) else str(react.emoji.id)
@@ -294,14 +296,17 @@ class ReactionRole(commands.Cog):
         # Edit embed and update message
         msg_em.description = f'{msg_em.description}\n{emoji} {role.mention}{f" - {desc}" if desc else ""}'
         await message.edit(embed=msg_em)
+        logger.info(f"[ReactionRole add()] Updated original message with new embed: {msg_em.to_dict()}")
 
         # Add new reaction to message
+        logger.info("[ReactionRole add()] Adding new emoji reaction to message")
         await message.add_reaction(emoji)
 
         # Update local and database
         emoji_roles.update({ emoji if is_emoji(emoji) else str(emoji.id) : role.id})
         descs.append(desc)
 
+        logger.info("[ReactionRole add()] Updating local watchlist and database with new emoji-role pair")
         self.react_msgs[message_id] = emoji_roles
 
         react_role.emoji_roles = json.dumps(emoji_roles)
@@ -309,6 +314,7 @@ class ReactionRole(commands.Cog):
         await ReactRoles.insert(react_role)
 
         # Clean up and send link to user
+        logger.info("[ReactionRole add()] Cleaning command message and sending updated message link to user")
         await self.clean(ctx)
         await ctx.send(f"Updated: {message.jump_url}")
 
