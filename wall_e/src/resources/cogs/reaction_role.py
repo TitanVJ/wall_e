@@ -318,6 +318,69 @@ class ReactionRole(commands.Cog):
         await self.clean(ctx)
         await ctx.send(f"Updated: {message.jump_url}")
 
+    async def remove(self, ctx, message_id):
+        """Removes an emoji - role pair from existing react role message"""
+
+        # NOTE: could check local first before going to model?
+        logger.info(f"[ReactionRole remove()] Retrieving react role with id={message_id}")
+        react_role: ReactRoles = await ReactRoles.get_react_role_by_id(message_id)
+        if not react_role:
+            logger.info("[ReactionRole remove()] No react role message found")
+            await ctx.send(f"No react role message found w/ id=`{message_id}`")
+            return
+
+        logger.info(f"[ReactionRole remove()] React role message found: {react_role}")
+        try:
+            channel = ctx.guild.get_channel(react_role.channel_id)
+            message: discord.Message = await channel.fetch_message(react_role.message_id)
+        except Exception as e:
+            logger.info(f"[ReactionRole remove()] Encountered error: {e}")
+
+        msg_em: discord.Embed = message.embeds[0]
+        logger.info(f"[ReactionRole remove()] Message embed obtained: {msg_em.to_dict()}")
+        emoji_roles = json.loads(react_role.emoji_roles)
+        descs = json.loads(react_role.descriptions)
+
+        emoji, _ = await self.request(ctx, prompt='Enter the emoji from emoji - role pair to remove')
+        if not is_emoji(emoji):
+            try:
+                emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
+            except Exception as e:
+                logger.info("[ReactionRole remove()] Emoji not found. Command terminated.")
+                await ctx.send(f"Could find `{emoji}` emoji")
+                return
+
+        # Confirm is part of react role
+        emoji_id = emoji if is_emoji(emoji) else str(emoji.id)
+        if emoji_id not in emoji_roles.keys():
+            logger.info(f"[ReactionRole remove()] Emoji: {emoji} not part of react role. Command terminated.")
+            await ctx.send(f"{emoji} is not part of the react role")
+            return
+
+        # Remove emoji-role from dict and the description from descs
+        idx = list(emoji_roles).index(emoji_id)
+        del emoji_roles[emoji_id]
+        del descs[idx]
+
+        desc_parts = msg_em.description.split('\n')
+        del desc_parts[idx]
+
+        await message.clear_reaction(emoji)
+
+        msg_em.description = '\n'.join(desc_parts)
+        await message.edit(embed=msg_em)
+
+        self.react_msgs[message_id] = emoji_roles
+
+        react_role.emoji_roles = json.dumps(emoji_roles)
+        react_role.descriptions = json.dumps(descs)
+        await ReactRoles.insert(react_role)
+
+        # Clean up and send link to user
+        logger.info("[ReactionRole remove()] Cleaning command messages and sending updated message link to user")
+        await self.clean(ctx)
+        await ctx.send(f"Updated: {message.jump_url}")
+
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx, *sub_cmd):
         if not sub_cmd:
@@ -336,6 +399,8 @@ class ReactionRole(commands.Cog):
         elif len(sub_cmd) >= 2:
             if cmd == 'add':
                 await self.add(ctx, sub_cmd[1])
+            elif cmd == 'remove':
+                await self.remove(ctx, sub_cmd[1])
         else:
             logger.info("[ReactionRole reactrole()] Unknown subcommand")
             await self.rr_help(ctx)
