@@ -94,6 +94,31 @@ class ReactionRole(commands.Cog):
         await msg.add_reaction('\N{WHITE HEAVY CHECK MARK}')
         return [emoji, role, desc]
 
+    async def rr_help(self, ctx):
+        """Sends help message for react role command"""
+
+        desc = [
+            ('Commands:', ''),
+            ('make/create', 'Creates new react message'),
+            ('list', 'List of all react messages'),
+            ('add `message_id`', 'Add emoji-role pair to existing react message with id=`message_id`'),
+            ('remove `message_id`', 'Remove emoji-role pair from existing react message with id=`message_id`'),
+            ('How to get message_id',('[Discord Link]('
+             'https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-)'))
+        ]
+        em = await embed(
+            ctx=ctx,
+            title='Error',
+            content=desc,
+            description='Usage: .rr/reactrole `cmd`',
+            colour=discord.Colour.red()
+        )
+        if not em:
+            return
+
+        logger.info("[ReactionRole rr_help()] Sending react role help message")
+        await ctx.send(embed=em, delete_after=20)
+
     async def make(self, ctx):
         logger.info("[ReactionRole make()] starting interactive process to create react role embed")
 
@@ -278,31 +303,6 @@ class ReactionRole(commands.Cog):
 
         # Done
         await ctx.send(f"Done. Heres a link to the updated react role {message.jump_url}")
-
-    async def rr_help(self, ctx):
-        """Sends help message for react role command"""
-
-        desc = [
-            ('Commands:', ''),
-            ('make/create', 'Creates new react message'),
-            ('list', 'List of all react messages'),
-            ('add `message_id`', 'Add emoji-role pair to existing react message with id=`message_id`'),
-            ('remove `message_id`', 'Remove emoji-role pair from existing react message with id=`message_id`'),
-            ('How to get message_id',('[Discord Link]('
-             'https://support.discord.com/hc/en-us/articles/206346498-Where-can-I-find-my-User-Server-Message-ID-)'))
-        ]
-        em = await embed(
-            ctx=ctx,
-            title='Error',
-            content=desc,
-            description='Usage: .rr/reactrole `cmd`',
-            colour=discord.Colour.red()
-        )
-        if not em:
-            return
-
-        logger.info("[ReactionRole rr_help()] Sending react role help message")
-        await ctx.send(embed=em, delete_after=20)
 
     @commands.command(aliases=['rr'])
     async def reactrole(self, ctx, *sub_cmd):
