@@ -256,13 +256,7 @@ class ReactionRole(commands.Cog):
         # Request emoji role pair to add
         logger.info("[ReactionRole add()] Requesting new emoji role pair from user")
         await ctx.send(self.ROLE_PROMPT)
-        try:
-            erd = await self.get_emoji_role(ctx, emoji_roles.keys(), emoji_roles.values())
-        except asyncio.TimeoutError:
-            await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
-            logger.info("[ReactionRole add()] Timeout. Process terminated.")
-            return
-
+        erd = await self.get_emoji_role(ctx, emoji_roles.keys(), emoji_roles.values())
         if not erd:
             await ctx.send("Redo command. Bye \N{WAVING HAND SIGN}")
             return
@@ -298,14 +292,13 @@ class ReactionRole(commands.Cog):
         msg_em: discord.Embed = message.embeds[0]
         logger.info(f"[ReactionRole remove()] Message embed obtained: {msg_em.to_dict()}")
 
-        # TODO: this request needs to be wrapped in a try except. maybe catch all in edit()
         emoji, _ = await self.request(ctx, prompt='Enter the emoji from emoji - role pair to remove')
         if not is_emoji(emoji):
             try:
                 emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
-            except Exception as e:
+            except Exception:
                 logger.info("[ReactionRole remove()] Emoji not found. Command terminated.")
-                await ctx.send(f"Could find `{emoji}` emoji")
+                await ctx.send(f"Couldn't find `{emoji}` emoji")
                 return
 
         # Confirm is part of react role
@@ -356,7 +349,13 @@ class ReactionRole(commands.Cog):
         ## add/remove will update the message and reactions themeselves
         logger.info(f"[ReactionRole edit()] Calling {action}() w/ emoji_roles={emoji_roles} descs={descs}")
         method = self.add if action == 'add' else self.remove
-        er_d = await method(ctx, message, emoji_roles, descs)
+        try:
+            er_d = await method(ctx, message, emoji_roles, descs)
+        except asyncio.TimeoutError:
+            await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
+            logger.info("[ReactionRole edit()] Timeout. Process terminated.")
+            return
+
         if not er_d:
             logger.info(f"[ReactionRole edit()] {action} failed")
             return
