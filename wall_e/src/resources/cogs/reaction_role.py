@@ -247,27 +247,11 @@ class ReactionRole(commands.Cog):
                 logger.info(f"[ReactionRole list_react_messages()] Encountered following error: {e}")
                 return
 
-    async def add(self, ctx, message_id):
+    async def add(self, ctx, message: discord.Message, emoji_roles, descs):
         """Adds emoji - role pair to existing react role message"""
-
-        logger.info(f"[ReactionRole add()] Retrieving react role with id={message_id}")
-        react_role: ReactRoles = await ReactRoles.get_react_role_by_id(message_id)
-        if not react_role:
-            logger.info("[ReactionRole add()] No react role message found")
-            await ctx.send(f"No react role message found w/ id=`{message_id}`")
-            return
-
-        logger.info(f"[ReactionRole add()] React role message found: {react_role}")
-        try:
-            channel = ctx.guild.get_channel(react_role.channel_id)
-            message: discord.Message = await channel.fetch_message(react_role.message_id)
-        except Exception as e:
-            logger.info(f"[ReactionRole add()] Encountered error: {e}")
 
         msg_em: discord.Embed = message.embeds[0]
         logger.info(f"[ReactionRole add()] Message embed obtained: {msg_em.to_dict()}")
-        emoji_roles = json.loads(react_role.emoji_roles)
-        descs = json.loads(react_role.descriptions)
 
         # Request emoji role pair to add
         logger.info("[ReactionRole add()] Requesting new emoji role pair from user")
@@ -306,41 +290,15 @@ class ReactionRole(commands.Cog):
         emoji_roles.update({ emoji if is_emoji(emoji) else str(emoji.id) : role.id})
         descs.append(desc)
 
-        logger.info("[ReactionRole add()] Updating local watchlist and database with new emoji-role pair")
-        self.react_msgs[message_id] = emoji_roles
+        return [emoji_roles, descs]
 
-        react_role.emoji_roles = json.dumps(emoji_roles)
-        react_role.descriptions = json.dumps(descs)
-        await ReactRoles.insert(react_role)
-
-        # Clean up and send link to user
-        logger.info("[ReactionRole add()] Cleaning command message and sending updated message link to user")
-        await self.clean(ctx)
-        await ctx.send(f"Updated: {message.jump_url}")
-
-    async def remove(self, ctx, message_id):
+    async def remove(self, ctx, message: discord.Message, emoji_roles, descs):
         """Removes an emoji - role pair from existing react role message"""
-
-        # NOTE: could check local first before going to model?
-        logger.info(f"[ReactionRole remove()] Retrieving react role with id={message_id}")
-        react_role: ReactRoles = await ReactRoles.get_react_role_by_id(message_id)
-        if not react_role:
-            logger.info("[ReactionRole remove()] No react role message found")
-            await ctx.send(f"No react role message found w/ id=`{message_id}`")
-            return
-
-        logger.info(f"[ReactionRole remove()] React role message found: {react_role}")
-        try:
-            channel = ctx.guild.get_channel(react_role.channel_id)
-            message: discord.Message = await channel.fetch_message(react_role.message_id)
-        except Exception as e:
-            logger.info(f"[ReactionRole remove()] Encountered error: {e}")
 
         msg_em: discord.Embed = message.embeds[0]
         logger.info(f"[ReactionRole remove()] Message embed obtained: {msg_em.to_dict()}")
-        emoji_roles = json.loads(react_role.emoji_roles)
-        descs = json.loads(react_role.descriptions)
 
+        # TODO: this request needs to be wrapped in a try except. maybe catch all in edit()
         emoji, _ = await self.request(ctx, prompt='Enter the emoji from emoji - role pair to remove')
         if not is_emoji(emoji):
             try:
@@ -370,14 +328,48 @@ class ReactionRole(commands.Cog):
         msg_em.description = '\n'.join(desc_parts)
         await message.edit(embed=msg_em)
 
+        return [emoji_roles, descs]
+
+    async def edit(self, ctx, action, message_id):
+        """Edits existing react role by either adding a new emoji - role pair or removing one"""
+        logger.info(f"[ReactionRole edit()] Edit called with action='{action}' and message_id='{message_id}'")
+
+        logger.info(f"[ReactionRole add()] Retrieving react role with id={message_id}")
+        react_role: ReactRoles = await ReactRoles.get_react_role_by_id(message_id)
+        if not react_role:
+            logger.info("[ReactionRole add()] No react role message found")
+            await ctx.send(f"No react role message found w/ id=`{message_id}`")
+            return
+
+        logger.info(f"[ReactionRole add()] React role message found: {react_role}")
+        try:
+            channel = ctx.guild.get_channel(react_role.channel_id)
+            message: discord.Message = await channel.fetch_message(react_role.message_id)
+        except Exception as e:
+            logger.info(f"[ReactionRole add()] Encountered error: {e}")
+
+        emoji_roles = json.loads(react_role.emoji_roles)
+        descs = json.loads(react_role.descriptions)
+
+        #TODO: list current emoji - roles, requires converting role ids to discord.Roles
+
+        ## add/remove will update the message and reactions themeselves
+        logger.info(f"[ReactionRole edit()] Calling {action}() w/ emoji_roles={emoji_roles} descs={descs}")
+        method = self.add if action == 'add' else self.remove
+        er_d = await method(ctx, message, emoji_roles, descs)
+        if not er_d:
+            logger.info(f"[ReactionRole edit()] {action} failed")
+            return
+        emoji_roles, descs = er_d
+
+        # Update local and database
         self.react_msgs[message_id] = emoji_roles
 
         react_role.emoji_roles = json.dumps(emoji_roles)
         react_role.descriptions = json.dumps(descs)
         await ReactRoles.insert(react_role)
 
-        # Clean up and send link to user
-        logger.info("[ReactionRole remove()] Cleaning command messages and sending updated message link to user")
+        logger.info("[ReactionRole edit()] Cleaning command messages and sending updated message link to user")
         await self.clean(ctx)
         await ctx.send(f"Updated: {message.jump_url}")
 
@@ -396,11 +388,8 @@ class ReactionRole(commands.Cog):
         elif cmd == 'list':
             logger.info("[ReactionRole reactrole()] list")
             await self.list_react_messages(ctx)
-        elif len(sub_cmd) >= 2:
-            if cmd == 'add':
-                await self.add(ctx, sub_cmd[1])
-            elif cmd == 'remove':
-                await self.remove(ctx, sub_cmd[1])
+        elif cmd in ['add', 'remove'] and len(sub_cmd) >= 2:
+                await self.edit(ctx, cmd, sub_cmd[1])
         else:
             logger.info("[ReactionRole reactrole()] Unknown subcommand")
             await self.rr_help(ctx)
