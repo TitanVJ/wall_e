@@ -32,7 +32,8 @@ class ReactionRole(commands.Cog):
         self.COLOUR_PROMPT = ("## Enter a colour for the embed in hex format. Enter `none` to use default colour.\n"
                               "**Need helping picking a color?** Check out: <https://htmlcolorcodes.com/>")
         self.ROLE_PROMPT = ("Enter in this format:\n```emoji, @role, optional description```"
-                          "Comma seperate the args. Description can include Discord markup.\n"
+                          "**Comma seperate the args.** Custom server emoji's supported. "
+                          "Descriptions can include Discord markup.\n"
                           "**Example**:\n:smiling_imp:, @Froshee\n :snake:, @Tab-Life, React for **python** gang")
         self.ROLES_PROMPT = (f"## Add emojis and roles one at a time, when done type `done`.\n{self.ROLE_PROMPT}")
 
