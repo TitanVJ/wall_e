@@ -256,6 +256,7 @@ class ReactionRole(commands.Cog):
 
         # Request emoji role pair to add
         logger.info("[ReactionRole add()] Requesting new emoji role pair from user")
+        await ctx.send("## Provide a new emoji role pair to add")
         await ctx.send(self.ROLE_PROMPT)
         erd = await self.get_emoji_role(ctx, emoji_roles.keys(), emoji_roles.values())
         if not erd:
@@ -345,7 +346,9 @@ class ReactionRole(commands.Cog):
         emoji_roles = json.loads(react_role.emoji_roles)
         descs = json.loads(react_role.descriptions)
 
-        #TODO: list current emoji - roles, requires converting role ids to discord.Roles
+        # Send current emoji role pairs
+        await ctx.send(f"## Current emoji role pairings for __{react_role.title}__ react role")
+        await ctx.send(message.embeds[0].description)
 
         ## add/remove will update the message and reactions themeselves
         logger.info(f"[ReactionRole edit()] Calling {action}() w/ emoji_roles={emoji_roles} descs={descs}")
@@ -379,7 +382,7 @@ class ReactionRole(commands.Cog):
             logger.info("[ReactionRole reactrole()] No subcommand given")
             await self.rr_help(ctx)
             return
-
+        # TODO: handle exit exceptions
         cmd = sub_cmd[0].lower()
         logger.info(f"[ReactionRole reactrole()] Reactrole called with subcommand: {cmd}")
         if cmd in ['make', 'create']:
