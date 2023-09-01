@@ -397,7 +397,7 @@ class ReactionRole(commands.Cog):
             logger.info("[ReactionRole reactrole()] list")
             await self.list_react_messages(ctx)
         elif cmd in ['add', 'remove'] and len(sub_cmd) >= 2:
-                await self.edit(ctx, cmd, sub_cmd[1])
+            await self.edit(ctx, cmd, sub_cmd[1])
         else:
             logger.info("[ReactionRole reactrole()] Unknown subcommand")
             await self.rr_help(ctx)
