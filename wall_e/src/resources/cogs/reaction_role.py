@@ -342,6 +342,7 @@ class ReactionRole(commands.Cog):
             message: discord.Message = await channel.fetch_message(react_role.message_id)
         except Exception as e:
             logger.info(f"[ReactionRole add()] Encountered error: {e}")
+            return
 
         emoji_roles = json.loads(react_role.emoji_roles)
         descs = json.loads(react_role.descriptions)
@@ -359,6 +360,9 @@ class ReactionRole(commands.Cog):
             await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
             logger.info("[ReactionRole edit()] Timeout. Process terminated.")
             return
+        except ExitException:
+            logger.info("[ReactionRole edit()] Caller involked exit. Process terminated.")
+            return
 
         if not er_d:
             logger.info(f"[ReactionRole edit()] {action} failed")
@@ -371,6 +375,7 @@ class ReactionRole(commands.Cog):
         react_role.emoji_roles = json.dumps(emoji_roles)
         react_role.descriptions = json.dumps(descs)
         await ReactRoles.insert(react_role)
+        logger.info("[ReactionRole edit()] Database and local watchlist updated with react role.")
 
         logger.info("[ReactionRole edit()] Cleaning command messages and sending updated message link to user")
         await self.clean(ctx)
@@ -382,7 +387,7 @@ class ReactionRole(commands.Cog):
             logger.info("[ReactionRole reactrole()] No subcommand given")
             await self.rr_help(ctx)
             return
-        # TODO: handle exit exceptions
+
         cmd = sub_cmd[0].lower()
         logger.info(f"[ReactionRole reactrole()] Reactrole called with subcommand: {cmd}")
         if cmd in ['make', 'create']:
