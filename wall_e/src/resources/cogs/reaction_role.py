@@ -137,13 +137,15 @@ class ReactionRole(commands.Cog):
             # Get channel
             channel, _ = await self.request(ctx, self.CHANNEL_PROMPT, converter=commands.TextChannelConverter())
             if not channel:
-                await ctx.send(f'Channel not found. Redo command to try again.')
+                # await ctx.send(f'Channel not found. Redo command to try again.')
                 logger.info('[ReactionRole make()] channel not found. Command terminated.')
-                return
+                # return
+                raise commands.CommandError("Channel not found.")
             if not self.bot.guilds[0].me.permissions_in(channel).send_messages:
-                await ctx.send(f'I do not have send permission in {channel.mention}. Command terminated.')
+                # await ctx.send(f'I do not have send permission in {channel.mention}. Command terminated.')
                 logger.info(f'[ReactionRole make()] No send permission in {channel}. Command terminated')
-                return
+                # return
+                raise commands.CommandError(f"I don't have send permission in {channel.mention}.")
 
             logger.info(f'[ReactionRole make()] channel to send react role confirmed: {channel}')
 
@@ -178,15 +180,19 @@ class ReactionRole(commands.Cog):
                 role_ids.append(role.id)
                 logger.info(f'[ReactionRole make()] emoji role pair added: {emoji} - {role}')
         except asyncio.TimeoutError:
-            await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
-            logger.info("[ReactionRole make()] Timeout. Process terminated.")
-            return
-        except ExitException:
-            logger.info("[ReactionRole make()] Caller involked exit. Process terminated.")
-            return
+            # await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
+            logger.info("[ReactionRole make()] Process timed out.")
+            # return
+            raise commands.CommandError("You took too long. Bye \N{WAVING HAND SIGN}")
+        except ExitException as e:
+            logger.info("[ReactionRole make()] User involked exit. Process terminated.")
+            # return
+            raise e
+        except commands.CommandError as e:
+            raise e
         except Exception as e:
             logger.info(f"[ReactionRole make()] Unknown exception: {e}")
-            return
+            raise commands.CommandError
 
         # Create, send react message, and add reactions
         rr_embed = await embed(
@@ -195,7 +201,8 @@ class ReactionRole(commands.Cog):
             colour=colour,
             description='\n'.join(em_desc)
         )
-        if not rr_embed: return
+        if not rr_embed:
+            raise commands.CommandError("Embed descriptions too long.")
 
         react_msg = await channel.send(embed=rr_embed)
         for emoji in emojis.keys():
@@ -241,6 +248,7 @@ class ReactionRole(commands.Cog):
         for msg in msgs:
             title = msg[2]
             try:
+                # TODO: what happen if message is gone(message itself, or channel) before task.clean has caught up
                 ch = ctx.guild.get_channel(msg[1])
                 msg = await ch.fetch_message(msg[0])
                 await ctx.send(f"{title} - {msg.jump_url}", delete_after=20)
@@ -260,8 +268,7 @@ class ReactionRole(commands.Cog):
         await ctx.send(self.ROLE_PROMPT)
         erd = await self.get_emoji_role(ctx, emoji_roles.keys(), emoji_roles.values())
         if not erd:
-            await ctx.send("Redo command. Bye \N{WAVING HAND SIGN}")
-            return
+            raise commands.CommandError("Redo command. Bye \N{WAVING HAND SIGN}")
         emoji, role, desc = erd
         logger.info(f"[ReactionRole add()] New emoji role pair to add: {emoji} - {role}")
 
@@ -300,15 +307,13 @@ class ReactionRole(commands.Cog):
                 emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
             except Exception:
                 logger.info("[ReactionRole remove()] Emoji not found. Command terminated.")
-                await ctx.send(f"Couldn't find `{emoji}` emoji")
-                return
+                raise commands.CommandError(f"Counldn't find {emoji} emoji.")
 
         # Confirm is part of react role
         emoji_id = emoji if is_emoji(emoji) else str(emoji.id)
         if emoji_id not in emoji_roles.keys():
             logger.info(f"[ReactionRole remove()] Emoji: {emoji} not part of react role. Command terminated.")
-            await ctx.send(f"{emoji} is not part of the react role")
-            return
+            raise commands.CommandError(f"{emoji} is not part of the react role")
 
         # Remove emoji-role from dict and the description from descs
         idx = list(emoji_roles).index(emoji_id)
@@ -333,16 +338,16 @@ class ReactionRole(commands.Cog):
         react_role: ReactRoles = await ReactRoles.get_react_role_by_id(message_id)
         if not react_role:
             logger.info("[ReactionRole add()] No react role message found")
-            await ctx.send(f"No react role message found w/ id=`{message_id}`")
-            return
+            raise commands.CommandError(f"Could not find react role with id=`{message_id}`")
 
         logger.info(f"[ReactionRole add()] React role message found: {react_role}")
         try:
+            # NOTE: handle similar to TODO in list_react_messages()
             channel = ctx.guild.get_channel(react_role.channel_id)
             message: discord.Message = await channel.fetch_message(react_role.message_id)
         except Exception as e:
             logger.info(f"[ReactionRole add()] Encountered error: {e}")
-            return
+            raise commands.CommandError("Error getting message from guild.")
 
         emoji_roles = json.loads(react_role.emoji_roles)
         descs = json.loads(react_role.descriptions)
@@ -357,16 +362,14 @@ class ReactionRole(commands.Cog):
         try:
             er_d = await method(ctx, message, emoji_roles, descs)
         except asyncio.TimeoutError:
-            await ctx.send('You took too long.\nBye \N{WAVING HAND SIGN}')
             logger.info("[ReactionRole edit()] Timeout. Process terminated.")
-            return
+            raise commands.CommandError("You took too long. Bye \N{WAVING HAND SIGN}")
         except ExitException:
             logger.info("[ReactionRole edit()] Caller involked exit. Process terminated.")
-            return
-
-        if not er_d:
+            raise e
+        except commands.CommandError as e:
             logger.info(f"[ReactionRole edit()] {action} failed")
-            return
+            raise e
         emoji_roles, descs = er_d
 
         # Update local and database
@@ -390,17 +393,27 @@ class ReactionRole(commands.Cog):
 
         cmd = sub_cmd[0].lower()
         logger.info(f"[ReactionRole reactrole()] Reactrole called with subcommand: {cmd}")
-        if cmd in ['make', 'create']:
-            logger.info("[ReactionRole reactrole()] make")
-            await self.make(ctx)
-        elif cmd == 'list':
-            logger.info("[ReactionRole reactrole()] list")
-            await self.list_react_messages(ctx)
-        elif cmd in ['add', 'remove'] and len(sub_cmd) >= 2:
-            await self.edit(ctx, cmd, sub_cmd[1])
-        else:
-            logger.info("[ReactionRole reactrole()] Unknown subcommand")
-            await self.rr_help(ctx)
+        try:
+            if cmd in ['make', 'create']:
+                logger.info("[ReactionRole reactrole()] make")
+                await self.make(ctx)
+            elif cmd in ['add', 'remove'] and len(sub_cmd) >= 2:
+                await self.edit(ctx, cmd, sub_cmd[1])
+            elif cmd == 'list':
+                logger.info("[ReactionRole reactrole()] list")
+                await self.list_react_messages(ctx)
+            else:
+                logger.info("[ReactionRole reactrole()] Unknown subcommand")
+                await self.clean(ctx)
+                await self.rr_help(ctx)
+
+        except ExitException:
+            await self.clean(ctx)
+
+        except commands.CommandError as e:
+            await self.clean(ctx)
+            if len(e.args) > 0:
+                await ctx.send(e, delete_after=20)
 
     @commands.Cog.listener(name='on_raw_reaction_add')
     @commands.Cog.listener(name='on_raw_reaction_remove')
