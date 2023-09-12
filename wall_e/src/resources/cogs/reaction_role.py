@@ -301,22 +301,21 @@ class ReactionRole(commands.Cog):
         msg_em: discord.Embed = message.embeds[0]
         logger.info(f"[ReactionRole remove()] Message embed obtained: {msg_em.to_dict()}")
 
-        emoji, _ = await self.request(ctx, prompt='Enter the emoji from emoji - role pair to remove')
-        if not is_emoji(emoji):
-            try:
-                emoji = await commands.PartialEmojiConverter().convert(ctx, emoji)
-            except Exception:
-                logger.info("[ReactionRole remove()] Emoji not found. Command terminated.")
-                raise commands.CommandError(f"Counldn't find {emoji} emoji.")
+        idx, _ = await self.request(ctx, prompt='Enter the index for the emoji - role pair to remove')
+        if idx < 0 or idx >= len(emoji_roles):
+            logger.info("[ReactionRole remove()] Emoji-role index out of bound. Command terminated.")
+            raise commands.CommandError(f"Index out of bounds.")
 
         # Confirm is part of react role
-        emoji_id = emoji if is_emoji(emoji) else str(emoji.id)
-        if emoji_id not in emoji_roles.keys():
-            logger.info(f"[ReactionRole remove()] Emoji: {emoji} not part of react role. Command terminated.")
-            raise commands.CommandError(f"{emoji} is not part of the react role")
+        emoji_id = list(emoji_roles.keys())[idx]
+        # emoji_id = emoji if is_emoji(emoji) else str(emoji.id)
+        # if emoji_id not in emoji_roles.keys():
+        #     logger.info(f"[ReactionRole remove()] Emoji: {emoji} not part of react role. Command terminated.")
+        #     raise commands.CommandError(f"{emoji} is not part of the react role")
 
         # Remove emoji-role from dict and the description from descs
-        idx = list(emoji_roles).index(emoji_id)
+        # idx = list(emoji_roles).index(emoji_id)
+        # TODO: need to get emoji here,need for clear_reaction below
         del emoji_roles[emoji_id]
         del descs[idx]
 
@@ -354,7 +353,12 @@ class ReactionRole(commands.Cog):
 
         # Send current emoji role pairs
         await ctx.send(f"## Current emoji role pairings for __{react_role.title}__ react role")
-        await ctx.send(message.embeds[0].description)
+        if action == 'add':
+            await ctx.send(message.embeds[0].description)
+        else:
+            des = message.embeds[0].description.split('\n')
+            for idx, msg in enumerate(des):
+                await ctx.send(f"{idx} {msg}")
 
         ## add/remove will update the message and reactions themeselves
         logger.info(f"[ReactionRole edit()] Calling {action}() w/ emoji_roles={emoji_roles} descs={descs}")
