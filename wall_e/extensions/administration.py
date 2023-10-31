@@ -306,20 +306,20 @@ class Administration(commands.Cog):
             await interaction.followup.send(f"{extension_to_reload}` extension reload failed: {type(e)}, {e}")
             self.logger.debug(f"[Administration reload()] reloading {extension_to_reload} failed :{type(e)}, {e}")
 
-    async def toggle_command(self, ctx, cmd_name, _enabled:bool):
+    async def toggle_command(self, ctx, cmd_name, _enabled: bool):
         """Sets command enabled value to _enabled"""
 
         self.logger.info(f"[Administration toggle_command()] Attempting to toggle command {cmd_name} to {_enabled}")
-        cmds = self.bot.commands
+        cmds = bot.commands
         try:
-            command = next((c for c in cmds if c.name==cmd_name))
+            command = next((c for c in cmds if c.name == cmd_name))
         except StopIteration:
             await ctx.send(f"No command with name `{cmd_name}` found.")
             self.logger.debug("[Administration toggle_command()] Command not found.")
             return
         command.update(enabled=_enabled)
+        await ctx.message.add_reaction("\N{WHITE HEAVY CHECK MARK}")
         state = 'enabled' if _enabled else 'disabled'
-        await ctx.send(f"Command `{cmd_name}` is {state}")
         self.logger.debug(f"[Administration toggle_command()] Command found and successfully {state}")
 
     @commands.command()
