@@ -306,6 +306,21 @@ class Administration(commands.Cog):
             await interaction.followup.send(f"{extension_to_reload}` extension reload failed: {type(e)}, {e}")
             self.logger.debug(f"[Administration reload()] reloading {extension_to_reload} failed :{type(e)}, {e}")
 
+    @commands.command()
+    @commands.has_any_role("Bot_manager", "Minions", "Moderator")
+    async def disable(self, ctx, cmd_name):
+        self.logger.info(f"[Administration disable()] disable command detected from {ctx.author} args={cmd_name}")
+        cmds = self.bot.commands
+        try:
+            command = next((c for c in cmds if c.name==cmd_name))
+        except StopIteration:
+            await ctx.send(f"No command with name `{cmd_name}` found.")
+            self.logger.debug("Command not found.")
+            return
+        command.update(enabled=False)
+        await ctx.send(f"Command `{cmd_name}` is disabled.")
+        self.logger.debug("Command found and successfully debugged")
+
     @commands.command(
         brief="executes the command on the bot host OS",
         help=(
